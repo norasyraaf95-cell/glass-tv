@@ -57,10 +57,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
         /** OK was held on a tile. Return false to open the app's info page, as before. */
         boolean onTileHeld(int position, View card);
+
+        /** Opens the full app grid from the fifth dock tile. */
+        void onAllAppsPressed();
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, ALL_APPS = 3;
 
         final int kind;
         final String label;
@@ -258,6 +261,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (ca != cb) return ca ? -1 : 1;
             return a.label.compareToIgnoreCase(b.label);
         });
+        // Functional fifth dock button: browse apps below the first row, no fake package.
+        fresh.add(Math.min(4, fresh.size()), new Entry(Entry.ALL_APPS, "Apps",
+                new ComponentName(ctx.getPackageName(), "com.gathin.tvhome.CustomAppsTile"),
+                null, ctx.getDrawable(R.drawable.ic_custom_apps), null, 0xFFE83BA8));
+
         // Optional "Default home" tile (config.xml), only when this TV actually has a home-screen picker.
         if (showHomeSettings
                 && pm.resolveActivity(new Intent(Settings.ACTION_HOME_SETTINGS), 0) != null) {
@@ -379,8 +387,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         // cloud motion using the TV remote, without a mouse or ADB.
         h.card.setNextFocusUpId(position == dockSize - 1
                 ? R.id.customWeatherCard : View.NO_ID);
-        h.card.setOnClickListener(v -> launch(e));
+        h.card.setOnClickListener(v -> {
+            if (e.kind == Entry.ALL_APPS && listener != null) listener.onAllAppsPressed();
+            else launch(e);
+        });
         h.card.setOnLongClickListener(v -> {
+            if (e.kind == Entry.ALL_APPS) return true;
             int pos = h.getBindingAdapterPosition();
             if (listener != null && pos != RecyclerView.NO_POSITION && listener.onTileHeld(pos, v)) return true;
             openAppInfo(e);
@@ -413,7 +425,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Whether the tile at {@code position} can be moved: every app can, the Default home tile cannot. */
     boolean canMove(int position) {
-        return position >= 0 && position < items.size() && items.get(position).kind != Entry.HOME_SETTINGS;
+        return position >= 0 && position < items.size()
+                && items.get(position).kind != Entry.HOME_SETTINGS
+                && items.get(position).kind != Entry.ALL_APPS;
     }
 
     /** The last position a moved tile can take: before the Default home tile, which stays last. */
