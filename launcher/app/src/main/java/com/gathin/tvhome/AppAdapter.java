@@ -262,11 +262,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (ca != cb) return ca ? -1 : 1;
             return a.label.compareToIgnoreCase(b.label);
         });
-        // Exact five-slot reference layout; never substitute another installed app for Disney+.
+        // Four requested brand slots plus Apps. Keep Spotify in slot 4 and never substitute an unrelated app.
         // A missing app displays a labelled shortcut that explains it is not installed.
         String[] dockPackages = {"com.google.android.youtube.tv", "com.netflix.ninja",
-                "com.vuclip.viu.tv", "in.startv.hotstar.dplus.tv"};
-        String[] dockLabels = {"YouTube", "Netflix", "Viu", "Disney+"};
+                "com.vuclip.viu.tv", "com.spotify.tv.android"};
+        String[] dockLabels = {"YouTube", "Netflix", "Viu", "Spotify"};
         List<Entry> ordered = new ArrayList<>();
         for (int i = 0; i < dockPackages.length; i++) {
             Entry chosen = null;
@@ -278,7 +278,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 if (i == 0) match |= pkg.contains("youtube") && !pkg.contains("music");
                 if (i == 1) match |= pkg.contains("netflix");
                 if (i == 2) match |= pkg.contains("viu") || name.equals("viu for home");
-                if (i == 3) match |= pkg.contains("hotstar") || pkg.contains("disneyplus");
+                if (i == 3) match |= pkg.contains("spotify") && !pkg.contains("connect");
                 if (match) { chosen = candidate; break; }
             }
             if (chosen == null) {
@@ -368,6 +368,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             int art = brand == 0 ? R.drawable.custom_logo_youtube
                     : brand == 1 ? R.drawable.custom_logo_netflix
                     : brand == 2 ? R.drawable.custom_logo_viu
+                    : brand == 3 ? R.drawable.custom_logo_spotify
                     : brand == 4 ? R.drawable.ic_custom_apps : 0;
             if (art != 0) {
                 h.icon.setImageResource(art);
@@ -383,16 +384,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             labelLp.gravity = Gravity.CENTER_VERTICAL;
             h.label.setLayoutParams(labelLp);
             h.label.setText(brand == 0 ? "YouTube" : brand == 1 ? "Netflix"
-                    : brand == 2 ? "Viu" : brand == 3 ? "Disney+" : "Apps");
-            h.label.setTextSize(brand == 3 ? 22f : 18f);
+                    : brand == 2 ? "Viu" : brand == 3 ? "Spotify" : "Apps");
+            h.label.setTextSize(17f);
             h.label.setTypeface(android.graphics.Typeface.create(
-                    brand == 3 ? "cursive" : "sans-serif",
-                    brand == 3 ? android.graphics.Typeface.NORMAL : android.graphics.Typeface.BOLD));
-            h.label.setCompoundDrawablesWithIntrinsicBounds(0,
-                    brand == 3 ? R.drawable.custom_disney_arc : 0, 0, 0);
-            h.label.setCompoundDrawablePadding(brand == 3 ? Math.round(-7 * d) : 0);
-            h.label.setGravity(brand == 3 ? Gravity.CENTER : Gravity.CENTER_VERTICAL | Gravity.START);
-            h.label.setPadding(brand == 3 ? 0 : Math.round(60 * d), 0, Math.round(6 * d), 0);
+                    "sans-serif-medium", android.graphics.Typeface.NORMAL));
+            h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+            h.label.setCompoundDrawablePadding(0);
+            h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+            h.label.setPadding(Math.round(60 * d), 0, Math.round(6 * d), 0);
             h.label.setVisibility(View.VISIBLE);
         } else {
             h.card.setBackgroundResource(R.drawable.tile_bg);
