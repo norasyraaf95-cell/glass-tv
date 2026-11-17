@@ -14,15 +14,19 @@ import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
+import android.view.Gravity;
+import android.widget.FrameLayout;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.view.animation.PathInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -55,10 +59,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
         /** OK was held on a tile. Return false to open the app's info page, as before. */
         boolean onTileHeld(int position, View card);
+
+        /** Opens the full app grid from the fifth dock tile. */
+        void onAllAppsPressed();
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, ALL_APPS = 3, SHORTCUT = 4;
 
         final int kind;
         final String label;
@@ -92,8 +99,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private static final DecelerateInterpolator ZOOM_REDUCED = new DecelerateInterpolator();
     private static final OvershootInterpolator ZOOM_IN = new OvershootInterpolator(1.6f);
     private static final OvershootInterpolator ZOOM_OUT = new OvershootInterpolator(0f);
+    /** No elastic bounce on the premium dock: short curved motion settles within ~200ms. */
+    private static final PathInterpolator DOCK_IN = new PathInterpolator(.18f, .75f, .28f, 1f);
+    private static final PathInterpolator DOCK_OUT = new PathInterpolator(.22f, .0f, .27f, 1f);
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
-    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 101f;
+    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 82f;
 
     /**
      * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
@@ -116,6 +126,45 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return tileHeightPx + Math.round(45 * density);
     }
 
+    private static Bitmap[] lockedTiles;
+    private static synchronized Bitmap lockedTile(Context ctx, int index) {
+        if (index < 0 || index > 4) return null;
+        if (lockedTiles == null) {
+            lockedTiles = new Bitmap[5];
+            java.io.File folder = ctx.getExternalFilesDir(null);
+            if (folder != null) {
+                try {
+                    // One lightweight WebP contains exactly five approved tiles.
+                    // Split it once on launch; do not decode during DPAD focus animation.
+                    java.io.File image = new java.io.File(folder, "locked_tiles_v74.webp");
+                    if (image.isFile() && image.length() < 131072) {
+                        android.graphics.BitmapFactory.Options opts =
+                                new android.graphics.BitmapFactory.Options();
+                        // Avoid RGB_565 colour banding on the five small gradients.
+                        opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                        opts.inDither = true;
+                        Bitmap sprite = android.graphics.BitmapFactory.decodeFile(
+                                image.getAbsolutePath(), opts);
+                        if (sprite != null && sprite.getWidth() % 5 == 0) {
+                            int width = sprite.getWidth() / 5;
+                            int height = sprite.getHeight();
+                            // Crop to the same visible rounded-card geometry as V7.3.
+                            // V7.4 artwork has no hard black corner/shadow in the source;
+                            // Prime Video and Spotify pixels remain identical to V7.3.
+                            int trimX = Math.max(1, Math.round(width * .027f));
+                            int trimY = Math.max(1, Math.round(height * .061f));
+                            for (int i = 0; i < 5; i++) {
+                                lockedTiles[i] = Bitmap.createBitmap(sprite,
+                                        i * width + trimX, trimY,
+                                        width - trimX * 2, height - trimY * 2);
+                            }
+                        }
+                    }
+                } catch (RuntimeException ignored) {}
+            }
+        }
+        return lockedTiles[index];
+    }
     private final Context ctx;
     private final TileListener listener;
     private final int dockSize;
@@ -221,7 +270,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             }
             Drawable banner = loadBanner(pm, ri);
             // The icon only shows on a tile without a banner.
-            Drawable icon = banner == null ? ri.loadIcon(pm) : null;
+            // Cache native icons for pinned apps; the Custom V1 dock renders icons over dark glass
+            // instead of a full-screen app banner, keeping its RAM overhead low.
+            Drawable icon = banner == null || favourites.contains(pkg) ? ri.loadIcon(pm) : null;
             if (card != null) {
                 fresh.add(new Entry(Entry.CARD, card.label, component, banner, icon, card.caption, card.accent));
             } else {
@@ -254,6 +305,40 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (ca != cb) return ca ? -1 : 1;
             return a.label.compareToIgnoreCase(b.label);
         });
+        // Four requested brand slots plus Apps. Keep Spotify in slot 4 and never substitute an unrelated app.
+        // A missing app displays a labelled shortcut that explains it is not installed.
+        String[] dockPackages = {"com.teamsmart.videomanager.tv", "com.netflix.ninja",
+                "com.amazon.amazonvideo.livingroom", "com.spotify.tv.android"};
+        String[] dockLabels = {"SmartTube", "Netflix", "Prime Video", "Spotify"};
+        List<Entry> ordered = new ArrayList<>();
+        for (int i = 0; i < dockPackages.length; i++) {
+            Entry chosen = null;
+            for (Entry candidate : fresh) {
+                if (candidate.kind != Entry.APP) continue;
+                String pkg = candidate.pkg.toLowerCase(java.util.Locale.ROOT);
+                String name = candidate.label.toLowerCase(java.util.Locale.ROOT);
+                boolean match = candidate.pkg.equals(dockPackages[i]);
+                if (i == 0) match |= pkg.contains("teamsmart") || pkg.contains("smarttube") || pkg.contains("smarttubetv") || name.equals("smarttube");
+                if (i == 1) match |= pkg.contains("netflix");
+                if (i == 2) match |= pkg.contains("amazonvideo") || pkg.contains("avod.thirdpartyclient")
+                        || name.equals("prime video") || name.contains("prime video");
+                if (i == 3) match |= pkg.contains("spotify") && !pkg.contains("connect");
+                if (match) { chosen = candidate; break; }
+            }
+            if (chosen == null) {
+                chosen = new Entry(Entry.SHORTCUT, dockLabels[i],
+                        new ComponentName(dockPackages[i], "com.gathin.tvhome.MissingAppShortcut"),
+                        null, null, null, 0);
+            } else {
+                fresh.remove(chosen);
+            }
+            ordered.add(chosen);
+        }
+        ordered.add(new Entry(Entry.ALL_APPS, "Apps",
+                new ComponentName(ctx.getPackageName(), "com.gathin.tvhome.CustomAppsTile"),
+                null, ctx.getDrawable(R.drawable.ic_custom_apps), null, 0xFFE83BA8));
+        ordered.addAll(fresh);
+        fresh = ordered;
         // Optional "Default home" tile (config.xml), only when this TV actually has a home-screen picker.
         if (showHomeSettings
                 && pm.resolveActivity(new Intent(Settings.ACTION_HOME_SETTINGS), 0) != null) {
@@ -312,21 +397,107 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.name.setAlpha(focused ? 1f : 0f);
         h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
-        if (e.banner != null) {
-            h.banner.setImageDrawable(e.banner);
-            h.banner.setVisibility(View.VISIBLE);
-            h.icon.setVisibility(View.GONE);
-            h.label.setVisibility(View.GONE);
+        // Compact cinematic dock on the Custom V1 branch, with a static translucent fill and
+        // focus pink border. The full app grid still uses ordinary banners.
+        boolean inDock = position < dockSize;
+        float d = ctx.getResources().getDisplayMetrics().density;
+        FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
+        FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
+        if (inDock) {
+            h.premiumGlass.syncFocus(focused);
+            h.card.setScaleX(focused ? 1.055f : 1f);
+            h.card.setScaleY(focused ? 1.055f : 1f);
+            h.card.setTranslationY(focused ? -2f * d : 0f);
+            h.card.setTranslationZ(0f);
+            int brand = position;
+            // All five selected artworks ship with the installer, based on the locked 5-tile
+            // design. Do NOT use installed apps' banners: those change with app updates.
+            Bitmap lockedTile = lockedTile(ctx, brand);
+            boolean fullArtwork = lockedTile != null;
+            h.premiumGlass.setArtworkOnlyFocus(fullArtwork);
+            if (fullArtwork) {
+                // Artwork includes its own border; overlay only the animated focus line.
+                // This avoids doubled white/pink borders on the corners.
+                h.card.setBackgroundColor(Color.TRANSPARENT);
+                h.card.setForeground(h.premiumGlass);
+                h.banner.setScaleType(ImageView.ScaleType.FIT_XY);
+                h.banner.setImageBitmap(lockedTile);
+                h.banner.setVisibility(View.VISIBLE);
+            } else {
+                h.card.setForeground(null);
+                h.card.setBackground(h.premiumGlass);
+                h.banner.setImageDrawable(null);
+                h.banner.setVisibility(View.GONE);
+            }
+            // Keep vectors as a fallback for other screens, but not on branded cards.
+            int art = brand == 0 ? R.drawable.custom_logo_youtube
+                    : brand == 1 ? R.drawable.custom_logo_netflix
+                    : brand == 2 ? R.drawable.custom_logo_prime
+                    : brand == 3 ? R.drawable.custom_logo_spotify
+                    : brand == 4 ? R.drawable.ic_custom_apps : 0;
+            if (!fullArtwork && art != 0) {
+                h.icon.setImageResource(art);
+                h.icon.setVisibility(View.VISIBLE);
+                iconLp.width = Math.round(40 * d);
+                iconLp.height = Math.round(40 * d);
+                iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+                iconLp.leftMargin = Math.round(16 * d);
+                iconLp.bottomMargin = 0;
+                h.icon.setLayoutParams(iconLp);
+            } else h.icon.setVisibility(View.GONE);
+            labelLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            labelLp.gravity = Gravity.CENTER_VERTICAL;
+            h.label.setLayoutParams(labelLp);
+            h.label.setText(brand == 0 ? "SmartTube" : brand == 1 ? "Netflix"
+                    : brand == 2 ? "Prime Video" : brand == 3 ? "Spotify" : "Apps");
+            h.label.setTextSize(brand == 2 ? 15f : 17f);
+            h.label.setTypeface(android.graphics.Typeface.create(
+                    "sans-serif-medium", android.graphics.Typeface.NORMAL));
+            h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+            h.label.setCompoundDrawablePadding(0);
+            h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+            h.label.setPadding(Math.round(60 * d), 0, Math.round(6 * d), 0);
+            h.label.setVisibility(fullArtwork ? View.GONE : View.VISIBLE);
         } else {
-            h.banner.setImageDrawable(null);
-            h.banner.setVisibility(View.GONE);
-            h.icon.setImageDrawable(e.icon);
-            h.icon.setVisibility(View.VISIBLE);
-            h.label.setText(e.label);
-            h.label.setVisibility(View.VISIBLE);
+            h.premiumGlass.setArtworkOnlyFocus(false);
+            h.card.setForeground(null);
+            h.card.setBackgroundResource(R.drawable.tile_bg);
+            iconLp.width = Math.round(48 * d);
+            iconLp.height = Math.round(48 * d);
+            iconLp.gravity = Gravity.CENTER;
+            iconLp.leftMargin = 0;
+            iconLp.bottomMargin = Math.round(14 * d);
+            h.icon.setLayoutParams(iconLp);
+            labelLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            labelLp.gravity = Gravity.BOTTOM;
+            h.label.setLayoutParams(labelLp);
+            h.label.setPadding(Math.round(10 * d), 0, Math.round(10 * d), Math.round(8 * d));
+            h.label.setGravity(Gravity.CENTER);
+            h.label.setTextSize(13f);
+            if (e.banner != null) {
+                h.banner.setImageDrawable(e.banner);
+                h.banner.setVisibility(View.VISIBLE);
+                h.icon.setVisibility(View.GONE);
+                h.label.setVisibility(View.GONE);
+            } else {
+                h.banner.setImageDrawable(null);
+                h.banner.setVisibility(View.GONE);
+                h.icon.setImageDrawable(e.icon);
+                h.icon.setVisibility(View.VISIBLE);
+                h.label.setText(e.label);
+                h.label.setVisibility(View.VISIBLE);
+            }
         }
-        h.card.setOnClickListener(v -> launch(e));
+        // From the last dock item, Up reaches the weather card so the user can toggle
+        // cloud motion using the TV remote, without a mouse or ADB.
+        h.card.setNextFocusUpId(position == dockSize - 1
+                ? R.id.customWeatherCard : View.NO_ID);
+        h.card.setOnClickListener(v -> {
+            if (e.kind == Entry.ALL_APPS && listener != null) listener.onAllAppsPressed();
+            else launch(e);
+        });
         h.card.setOnLongClickListener(v -> {
+            if (e.kind == Entry.ALL_APPS) return true;
             int pos = h.getBindingAdapterPosition();
             if (listener != null && pos != RecyclerView.NO_POSITION && listener.onTileHeld(pos, v)) return true;
             openAppInfo(e);
@@ -341,6 +512,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             return;
         }
         onBindViewHolder(h, position);
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull Holder h) {
+        h.card.animate().cancel();
+        h.name.animate().cancel();
+        h.premiumGlass.stopFocus();
+        h.card.setTranslationY(0f);
+        h.card.setTranslationZ(0f);
+        h.card.setScaleX(1f);
+        h.card.setScaleY(1f);
+        super.onViewRecycled(h);
     }
 
     /** Android's page for the app at {@code position}: storage, permissions, uninstall. */
@@ -359,7 +542,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Whether the tile at {@code position} can be moved: every app can, the Default home tile cannot. */
     boolean canMove(int position) {
-        return position >= 0 && position < items.size() && items.get(position).kind != Entry.HOME_SETTINGS;
+        return position >= 0 && position < items.size()
+                && items.get(position).kind != Entry.HOME_SETTINGS
+                && items.get(position).kind != Entry.ALL_APPS
+                && items.get(position).kind != Entry.SHORTCUT;
     }
 
     /** The last position a moved tile can take: before the Default home tile, which stays last. */
@@ -393,6 +579,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return;
+        }
+        if (e.kind == Entry.SHORTCUT) {
+            Toast.makeText(ctx, e.label + " belum dipasang pada TV ini", Toast.LENGTH_LONG).show();
             return;
         }
         Intent i = new Intent(Intent.ACTION_MAIN)
@@ -491,6 +681,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     static final class Holder extends RecyclerView.ViewHolder {
         final View card;
+        final PremiumGlassDrawable premiumGlass;
         final ImageView banner;
         final ImageView icon;
         final TextView label;
@@ -500,6 +691,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         Holder(View v, TileListener listener, boolean reducedMotion) {
             super(v);
             card = v.findViewById(R.id.card);
+            premiumGlass = new PremiumGlassDrawable(card, true);
+            Backdrop.watch(card);
             banner = v.findViewById(R.id.banner);
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);
@@ -511,7 +704,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 @Override
                 public void getOutline(View view, Outline outline) {
                     // 16dp at the design width, scaled down with the tile so small tiles keep the same shape.
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius(view.getWidth(), density));
+                    // Match PremiumGlassDrawable's 19dp radius exactly inside the dock.
+                    // A different Android clip radius was shearing the glowing corners.
+                    int pos = getBindingAdapterPosition();
+                    float radius = pos >= 0 && pos < 5
+                            ? Math.min(view.getHeight() / 2f, 19f * density)
+                            : cornerRadius(view.getWidth(), density);
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
                 }
             });
             card.setClipToOutline(true);
@@ -525,26 +724,44 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             });
 
             card.setOnFocusChangeListener((view, focused) -> {
-                float s = focused ? FOCUS_SCALE : 1.0f;
+                int cardIndex = getBindingAdapterPosition();
+                boolean inDock = cardIndex >= 0 && cardIndex < 5;
+                float scale = focused ? (inDock ? 1.055f : FOCUS_SCALE) : 1f;
+                if (Build.VERSION.SDK_INT >= 28) {
+                    view.setOutlineAmbientShadowColor(0xA8EC57BD);
+                    view.setOutlineSpotShadowColor(0xA8EC57BD);
+                }
+                view.setElevation(inDock ? 0f : 2.5f * density);
                 view.animate().cancel();
                 name.animate().cancel();
-                if (reducedMotion) {
-                    // No overshoot: the extra frames redraw the banner and the dock band on a weak GPU.
-                    view.animate().scaleX(s).scaleY(s)
-                            .setDuration(focused ? 120 : 80)
-                            .setInterpolator(ZOOM_REDUCED)
-                            .withLayer()
+                if (inDock) {
+                    // One property animation, one reused highlight animator; no bounce or
+                    // live blur. Every keypress smoothly retargets from the current values.
+                    premiumGlass.animateFocus(focused);
+                    view.animate()
+                            .scaleX(scale).scaleY(scale)
+                            .translationY(focused ? -2f * density : 0f)
+                            .translationZ(0f)
+                            .setDuration(focused ? 215L : 165L)
+                            .setInterpolator(focused ? DOCK_IN : DOCK_OUT)
                             .start();
-                    name.animate().alpha(focused ? 1f : 0f).setDuration(100).start();
+                    name.setAlpha(0f); // dock names are not displayed under the tiles
+                } else if (reducedMotion) {
+                    view.animate().scaleX(scale).scaleY(scale)
+                            .translationY(0f).translationZ(0f)
+                            .setDuration(focused ? 120L : 80L)
+                            .setInterpolator(ZOOM_REDUCED)
+                            .start();
+                    name.animate().alpha(focused ? 1f : 0f).setDuration(100L).start();
                 } else {
-                    view.animate().scaleX(s).scaleY(s)
-                            .setDuration(focused ? 260 : 180)
+                    view.animate().scaleX(scale).scaleY(scale)
+                            .translationY(0f).translationZ(0f)
+                            .setDuration(focused ? 260L : 180L)
                             .setInterpolator(focused ? ZOOM_IN : ZOOM_OUT)
-                            .withLayer()
                             .start();
                     name.animate().alpha(focused ? 1f : 0f)
                             .translationY(focused ? density * 4f : -density * 6f)
-                            .setDuration(220).start();
+                            .setDuration(220L).start();
                 }
                 int pos = getBindingAdapterPosition();
                 if (focused && listener != null && pos != RecyclerView.NO_POSITION) {
