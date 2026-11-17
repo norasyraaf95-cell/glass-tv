@@ -85,6 +85,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private AppAdapter adapter;
     private RecyclerView grid;
+    /** Custom V1: two cached Shah Alam cards and a pauseable wallpaper atmosphere. */
+    private ShahAlamWidgets shahAlamWidgets;
+    private WindyCloudView cloudMotion;
+    private TextView customCloudToggle;
     private FrameLayout root;
     private GlassView glass;
     private View ambient;
@@ -253,6 +257,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sourcePanelAction = cfg.sourcePanelAction;
 
         root = findViewById(R.id.root);
+        // Install alongside the old launcher: no system component or existing Home is changed.
+        shahAlamWidgets = new ShahAlamWidgets(this);
+        cloudMotion = findViewById(R.id.cloudMotion);
+        customCloudToggle = findViewById(R.id.customCloudToggle);
+        android.content.SharedPreferences custom = getSharedPreferences("custom_v1", MODE_PRIVATE);
+        boolean windy = custom.getBoolean("windy_clouds", true);
+        cloudMotion.setCloudsEnabled(windy);
+        customCloudToggle.setText(windy ? "WINDY ON · OK to toggle" : "WINDY OFF · OK to toggle");
+        findViewById(R.id.customWeatherCard).setOnClickListener(v -> {
+            boolean next = !custom.getBoolean("windy_clouds", true);
+            custom.edit().putBoolean("windy_clouds", next).apply();
+            cloudMotion.setCloudsEnabled(next);
+            customCloudToggle.setText(next ? "WINDY ON · OK to toggle" : "WINDY OFF · OK to toggle");
+        });
         // The tiles' entrance plays once per TV boot. Android reclaims the launcher during long stays
         // in big apps; starting again then is a return to Home, not a first launch.
         long bootAt = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime();
@@ -671,6 +689,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateShamsiDate();
         updateWifiLabel();
         updateInputsButton();
+        shahAlamWidgets.resume();
+        cloudMotion.onHomeResume();
         startWallpaperRotation();
         handler.postDelayed(minuteTick, MINUTE_MS);
         handler.removeCallbacks(cacheClean);
@@ -758,6 +778,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onPause() {
         super.onPause();
         unregisterReceiver(packageReceiver);
+        shahAlamWidgets.pause();
+        cloudMotion.onHomePause();
         handler.removeCallbacks(minuteTick);
         handler.removeCallbacks(wallTick);
         // Nothing of ours stays on screen over another app; an undecided prompt simply returns next time.
@@ -786,6 +808,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        shahAlamWidgets.destroy();
+        cloudMotion.onHomePause();
         wallDecoder.shutdownNow();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
