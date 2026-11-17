@@ -26,6 +26,7 @@ import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
+import android.view.animation.PathInterpolator;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -98,6 +99,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private static final DecelerateInterpolator ZOOM_REDUCED = new DecelerateInterpolator();
     private static final OvershootInterpolator ZOOM_IN = new OvershootInterpolator(1.6f);
     private static final OvershootInterpolator ZOOM_OUT = new OvershootInterpolator(0f);
+    /** No elastic bounce on the premium dock: short curved motion settles within ~200ms. */
+    private static final PathInterpolator DOCK_IN = new PathInterpolator(.18f, .75f, .28f, 1f);
+    private static final PathInterpolator DOCK_OUT = new PathInterpolator(.22f, .0f, .27f, 1f);
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
     static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 82f;
 
@@ -361,6 +365,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
         FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
         if (inDock) {
+            h.premiumGlass.syncFocus(focused);
             h.card.setBackground(h.premiumGlass);
             h.banner.setImageDrawable(null);
             h.banner.setVisibility(View.GONE);
@@ -446,6 +451,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             return;
         }
         onBindViewHolder(h, position);
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull Holder h) {
+        h.card.animate().cancel();
+        h.name.animate().cancel();
+        h.premiumGlass.stopFocus();
+        h.card.setTranslationY(0f);
+        h.card.setTranslationZ(0f);
+        h.card.setScaleX(1f);
+        h.card.setScaleY(1f);
+        super.onViewRecycled(h);
     }
 
     /** Android's page for the app at {@code position}: storage, permissions, uninstall. */
@@ -640,35 +657,44 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             });
 
             card.setOnFocusChangeListener((view, focused) -> {
-                float s = focused ? FOCUS_SCALE : 1.0f;
                 int cardIndex = getBindingAdapterPosition();
-                boolean dockFocus = focused && cardIndex >= 0 && cardIndex < 5;
-                // One focused card only gets a vivid magenta hardware shadow. Cheap on Android TV.
+                boolean inDock = cardIndex >= 0 && cardIndex < 5;
+                float scale = focused ? (inDock ? 1.055f : FOCUS_SCALE) : 1f;
                 if (Build.VERSION.SDK_INT >= 28) {
-                    view.setOutlineAmbientShadowColor(0xDDF729B4);
-                    view.setOutlineSpotShadowColor(0xDDF729B4);
+                    view.setOutlineAmbientShadowColor(0xA8EC57BD);
+                    view.setOutlineSpotShadowColor(0xA8EC57BD);
                 }
-                view.setElevation(dockFocus ? 10f * density : 2.5f * density);
-                view.invalidate();
+                view.setElevation(2.5f * density);
                 view.animate().cancel();
                 name.animate().cancel();
-                if (reducedMotion) {
-                    // No overshoot: the extra frames redraw the banner and the dock band on a weak GPU.
-                    view.animate().scaleX(s).scaleY(s)
-                            .setDuration(focused ? 120 : 80)
-                            .setInterpolator(ZOOM_REDUCED)
-                            .withLayer()
+                if (inDock) {
+                    // One property animation, one reused highlight animator; no bounce or
+                    // live blur. Every keypress smoothly retargets from the current values.
+                    premiumGlass.animateFocus(focused);
+                    view.animate()
+                            .scaleX(scale).scaleY(scale)
+                            .translationY(focused ? -2f * density : 0f)
+                            .translationZ(focused ? 5f * density : 0f)
+                            .setDuration(focused ? 215L : 165L)
+                            .setInterpolator(focused ? DOCK_IN : DOCK_OUT)
                             .start();
-                    name.animate().alpha(focused ? 1f : 0f).setDuration(100).start();
+                    name.setAlpha(0f); // dock names are not displayed under the tiles
+                } else if (reducedMotion) {
+                    view.animate().scaleX(scale).scaleY(scale)
+                            .translationY(0f).translationZ(0f)
+                            .setDuration(focused ? 120L : 80L)
+                            .setInterpolator(ZOOM_REDUCED)
+                            .start();
+                    name.animate().alpha(focused ? 1f : 0f).setDuration(100L).start();
                 } else {
-                    view.animate().scaleX(s).scaleY(s)
-                            .setDuration(focused ? 260 : 180)
+                    view.animate().scaleX(scale).scaleY(scale)
+                            .translationY(0f).translationZ(0f)
+                            .setDuration(focused ? 260L : 180L)
                             .setInterpolator(focused ? ZOOM_IN : ZOOM_OUT)
-                            .withLayer()
                             .start();
                     name.animate().alpha(focused ? 1f : 0f)
                             .translationY(focused ? density * 4f : -density * 6f)
-                            .setDuration(220).start();
+                            .setDuration(220L).start();
                 }
                 int pos = getBindingAdapterPosition();
                 if (focused && listener != null && pos != RecyclerView.NO_POSITION) {
