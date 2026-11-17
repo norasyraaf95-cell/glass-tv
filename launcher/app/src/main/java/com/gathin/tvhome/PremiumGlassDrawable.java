@@ -1,5 +1,6 @@
 package com.gathin.tvhome;
 
+import android.animation.ValueAnimator;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
@@ -10,6 +11,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.view.View;
+import android.view.animation.PathInterpolator;
 
 import androidx.annotation.NonNull;
 
@@ -37,6 +39,9 @@ final class PremiumGlassDrawable extends Drawable {
     private final Paint focusInner = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
     private float opacity = 1f;
+    /** A reused animator fades the magenta focus between cards instead of flashing instantly. */
+    private final ValueAnimator focusFade;
+    private float focusAmount;
 
     PremiumGlassDrawable(View owner, boolean dock) {
         this.owner = owner;
@@ -74,13 +79,20 @@ final class PremiumGlassDrawable extends Drawable {
         focusOuter.setColor(0x25FF3DBB);
         focusMid.setColor(0x66F93DAE);
         focusInner.setColor(0xE8FF9BD9);
+        focusFade = ValueAnimator.ofFloat(0f, 1f);
+        focusFade.setDuration(195L);
+        focusFade.setInterpolator(new PathInterpolator(.2f, .72f, .25f, 1f));
+        focusFade.addUpdateListener(a -> {
+            focusAmount = (float) a.getAnimatedValue();
+            invalidateSelf();
+        });
     }
 
     @Override public void draw(@NonNull Canvas canvas) {
         bounds.set(getBounds());
         if (bounds.width() <= 0f || bounds.height() <= 0f) return;
         float radius = dock ? 19f * density : Math.min(bounds.height() / 2f, 28f * density);
-        boolean focused = dock && owner.isFocused();
+        boolean focused = dock && focusAmount > .005f;
 
         // The native launcher already prepares a blurred wallpaper at half resolution on
         // background worker; use its exact screen-aligned texture instead of a fake flat fill.
@@ -122,8 +134,28 @@ final class PremiumGlassDrawable extends Drawable {
         float inset = insetDp * density;
         inner.set(bounds);
         inner.inset(inset, inset);
-        paint.setAlpha(Math.round(alpha * opacity));
+        paint.setAlpha(Math.round(alpha * opacity * focusAmount));
         canvas.drawRoundRect(inner, radius - inset, radius - inset, paint);
+    }
+
+    /** Start from the current brightness, including when the remote is pressed rapidly. */
+    void animateFocus(boolean focused) {
+        if (!dock) return;
+        focusFade.cancel();
+        focusFade.setFloatValues(focusAmount, focused ? 1f : 0f);
+        focusFade.start();
+    }
+
+    /** RecyclerView rebind must not flash a recycled tile with the previous focus glow. */
+    void syncFocus(boolean focused) {
+        if (!dock) return;
+        focusFade.cancel();
+        focusAmount = focused ? 1f : 0f;
+        invalidateSelf();
+    }
+
+    void stopFocus() {
+        focusFade.cancel();
     }
 
     @Override public void setAlpha(int alpha) {
