@@ -17,6 +17,8 @@ import android.net.Uri;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
+import android.view.Gravity;
+import android.widget.FrameLayout;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -93,7 +95,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private static final OvershootInterpolator ZOOM_IN = new OvershootInterpolator(1.6f);
     private static final OvershootInterpolator ZOOM_OUT = new OvershootInterpolator(0f);
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
-    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 101f;
+    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 70f;
 
     /**
      * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
@@ -221,7 +223,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             }
             Drawable banner = loadBanner(pm, ri);
             // The icon only shows on a tile without a banner.
-            Drawable icon = banner == null ? ri.loadIcon(pm) : null;
+            // Cache native icons for pinned apps; the Custom V1 dock renders icons over dark glass
+            // instead of a full-screen app banner, keeping its RAM overhead low.
+            Drawable icon = banner == null || favourites.contains(pkg) ? ri.loadIcon(pm) : null;
             if (card != null) {
                 fresh.add(new Entry(Entry.CARD, card.label, component, banner, icon, card.caption, card.accent));
             } else {
@@ -312,18 +316,64 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.name.setAlpha(focused ? 1f : 0f);
         h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
-        if (e.banner != null) {
-            h.banner.setImageDrawable(e.banner);
-            h.banner.setVisibility(View.VISIBLE);
-            h.icon.setVisibility(View.GONE);
-            h.label.setVisibility(View.GONE);
-        } else {
+        // Compact cinematic dock on the Custom V1 branch, with a static translucent fill and
+        // focus pink border. The full app grid still uses ordinary banners.
+        boolean inDock = position < dockSize;
+        float d = ctx.getResources().getDisplayMetrics().density;
+        FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
+        FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
+        if (inDock) {
+            h.card.setBackgroundResource(R.drawable.custom_dock_tile);
             h.banner.setImageDrawable(null);
             h.banner.setVisibility(View.GONE);
-            h.icon.setImageDrawable(e.icon);
-            h.icon.setVisibility(View.VISIBLE);
+            if (e.icon != null) {
+                h.icon.setImageDrawable(e.icon);
+                h.icon.setVisibility(View.VISIBLE);
+                iconLp.width = Math.round(38 * d);
+                iconLp.height = Math.round(38 * d);
+                iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+                iconLp.leftMargin = Math.round(13 * d);
+                iconLp.bottomMargin = 0;
+                h.icon.setLayoutParams(iconLp);
+            } else {
+                h.icon.setVisibility(View.GONE);
+            }
+            labelLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            labelLp.gravity = Gravity.CENTER_VERTICAL;
+            h.label.setLayoutParams(labelLp);
             h.label.setText(e.label);
+            h.label.setTextSize(14f);
+            h.label.setGravity(Gravity.CENTER_VERTICAL | (e.icon != null ? Gravity.START : Gravity.CENTER));
+            h.label.setPadding(e.icon != null ? Math.round(58 * d) : Math.round(6 * d),
+                    0, Math.round(5 * d), 0);
             h.label.setVisibility(View.VISIBLE);
+        } else {
+            h.card.setBackgroundResource(R.drawable.tile_bg);
+            iconLp.width = Math.round(48 * d);
+            iconLp.height = Math.round(48 * d);
+            iconLp.gravity = Gravity.CENTER;
+            iconLp.leftMargin = 0;
+            iconLp.bottomMargin = Math.round(14 * d);
+            h.icon.setLayoutParams(iconLp);
+            labelLp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+            labelLp.gravity = Gravity.BOTTOM;
+            h.label.setLayoutParams(labelLp);
+            h.label.setPadding(Math.round(10 * d), 0, Math.round(10 * d), Math.round(8 * d));
+            h.label.setGravity(Gravity.CENTER);
+            h.label.setTextSize(13f);
+            if (e.banner != null) {
+                h.banner.setImageDrawable(e.banner);
+                h.banner.setVisibility(View.VISIBLE);
+                h.icon.setVisibility(View.GONE);
+                h.label.setVisibility(View.GONE);
+            } else {
+                h.banner.setImageDrawable(null);
+                h.banner.setVisibility(View.GONE);
+                h.icon.setImageDrawable(e.icon);
+                h.icon.setVisibility(View.VISIBLE);
+                h.label.setText(e.label);
+                h.label.setVisibility(View.VISIBLE);
+            }
         }
         h.card.setOnClickListener(v -> launch(e));
         h.card.setOnLongClickListener(v -> {
