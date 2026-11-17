@@ -386,8 +386,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     : brand == 2 ? "Viu" : brand == 3 ? "Disney+" : "Apps");
             h.label.setTextSize(brand == 3 ? 22f : 18f);
             h.label.setTypeface(android.graphics.Typeface.create(
-                    brand == 3 ? "sans-serif-medium" : "sans-serif",
-                    brand == 3 ? android.graphics.Typeface.ITALIC : android.graphics.Typeface.BOLD));
+                    brand == 3 ? "cursive" : "sans-serif",
+                    brand == 3 ? android.graphics.Typeface.NORMAL : android.graphics.Typeface.BOLD));
+            h.label.setCompoundDrawablesWithIntrinsicBounds(0,
+                    brand == 3 ? R.drawable.custom_disney_arc : 0, 0, 0);
+            h.label.setCompoundDrawablePadding(brand == 3 ? Math.round(-7 * d) : 0);
             h.label.setGravity(brand == 3 ? Gravity.CENTER : Gravity.CENTER_VERTICAL | Gravity.START);
             h.label.setPadding(brand == 3 ? 0 : Math.round(60 * d), 0, Math.round(6 * d), 0);
             h.label.setVisibility(View.VISIBLE);
