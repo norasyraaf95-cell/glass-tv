@@ -375,6 +375,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 h.label.setVisibility(View.VISIBLE);
             }
         }
+        // From the last dock item, Up reaches the weather card so the user can toggle
+        // cloud motion using the TV remote, without a mouse or ADB.
+        h.card.setNextFocusUpId(position == dockSize - 1
+                ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> launch(e));
         h.card.setOnLongClickListener(v -> {
             int pos = h.getBindingAdapterPosition();
