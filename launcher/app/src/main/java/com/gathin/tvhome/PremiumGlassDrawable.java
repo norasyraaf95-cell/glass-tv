@@ -31,6 +31,7 @@ final class PremiumGlassDrawable extends Drawable {
     private final Paint dark = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint lowerGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusOuter = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusMid = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusInner = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -41,32 +42,36 @@ final class PremiumGlassDrawable extends Drawable {
         this.owner = owner;
         this.dock = dock;
         density = owner.getResources().getDisplayMetrics().density;
-        // Interior darkness separates the panel from the busy purple sky.
+        // Reference is softly translucent lavender glass; the V4 near-black tint
+        // covered the blurred wallpaper. Keep the dusk colours visible beneath.
         dark.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
-                        ? new int[]{0xB62A213C, 0xC6211930, 0xD31A1829}
-                        : new int[]{0x7B9D759F, 0x755B4A78, 0x86714582},
-                new float[]{0f, .42f, 1f}, Shader.TileMode.CLAMP));
-        // A diffused top-facing reflection, rather than a cheap uniformly bright outline.
+                        ? new int[]{0x77453660, 0x8B312548, 0x9A201D35}
+                        : new int[]{0x527E648F, 0x605F4B7B, 0x76534775},
+                new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
+        // Wide diffuse highlight across the top of the glass, no sharp white border.
         reflection.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
-                        ? new int[]{0x3FFFFFFF, 0x10FFFFFF, 0x00FFFFFF}
-                        : new int[]{0x46FFFFFF, 0x16FFFFFF, 0x00FFFFFF},
-                new float[]{0f, .30f, .80f}, Shader.TileMode.CLAMP));
+                        ? new int[]{0x57FFF4FF, 0x19E4D8FF, 0x00FFFFFF}
+                        : new int[]{0x70FFF4FF, 0x20DED5FF, 0x00FFFFFF},
+                new float[]{0f, .39f, .87f}, Shader.TileMode.CLAMP));
+        lowerGlow.setShader(new LinearGradient(0f, 0f, 0f, 1f,
+                new int[]{0x00000000, 0x00FFA2E4, 0x18FF7DD2},
+                new float[]{0f, .68f, 1f}, Shader.TileMode.CLAMP));
         rim.setStyle(Paint.Style.STROKE);
-        rim.setStrokeWidth(.95f * density);
+        rim.setStrokeWidth(.72f * density);
         rim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
-                new int[]{0xDAFFEDFF, 0x81D6C5EB, 0x4BC5A8E0, 0xBFE7D3F4},
-                new float[]{0f, .25f, .74f, 1f}, Shader.TileMode.CLAMP));
+                new int[]{0xC4FFF0FF, 0x57D6C3EF, 0x38C7B0E4, 0x8CE6CFF5},
+                new float[]{0f, .28f, .73f, 1f}, Shader.TileMode.CLAMP));
         focusOuter.setStyle(Paint.Style.STROKE);
         focusMid.setStyle(Paint.Style.STROKE);
         focusInner.setStyle(Paint.Style.STROKE);
-        focusOuter.setStrokeWidth(6.2f * density);
-        focusMid.setStrokeWidth(3.7f * density);
-        focusInner.setStrokeWidth(1.7f * density);
-        focusOuter.setColor(0x3CFF3DBB);
-        focusMid.setColor(0x88FA37B8);
-        focusInner.setColor(0xFFFF9BDE);
+        focusOuter.setStrokeWidth(9.5f * density);
+        focusMid.setStrokeWidth(5f * density);
+        focusInner.setStrokeWidth(1.4f * density);
+        focusOuter.setColor(0x25FF3DBB);
+        focusMid.setColor(0x66F93DAE);
+        focusInner.setColor(0xE8FF9BD9);
     }
 
     @Override public void draw(@NonNull Canvas canvas) {
@@ -89,6 +94,9 @@ final class PremiumGlassDrawable extends Drawable {
         reflection.getShader().setLocalMatrix(matrix);
         reflection.setAlpha(Math.round(255f * opacity));
         canvas.drawRoundRect(bounds, radius, radius, reflection);
+        lowerGlow.getShader().setLocalMatrix(matrix);
+        lowerGlow.setAlpha(Math.round(255f * opacity));
+        canvas.drawRoundRect(bounds, radius, radius, lowerGlow);
 
         inner.set(bounds);
         float inset = .6f * density;
@@ -100,14 +108,14 @@ final class PremiumGlassDrawable extends Drawable {
         canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
 
         if (focused) {
-            // Controlled neon focus: three low-cost concentric passes, no per-frame blur/shadow.
-            float[] widths = {3.5f, 2.3f, .85f};
+            // Soft luminous halo in layers; light should bloom gently, not form a rigid box.
+            float[] widths = {4f, 2.6f, .8f};
             Paint[] paints = {focusOuter, focusMid, focusInner};
             for (int i = 0; i < paints.length; i++) {
                 inner.set(bounds);
                 inner.inset(widths[i] * density, widths[i] * density);
                 paints[i].setAlpha(Math.round(
-                        (i == 0 ? 0x3C : i == 1 ? 0x88 : 0xFF) * opacity));
+                        (i == 0 ? 0x25 : i == 1 ? 0x66 : 0xE8) * opacity));
                 canvas.drawRoundRect(inner, radius - widths[i] * density,
                         radius - widths[i] * density, paints[i]);
             }
