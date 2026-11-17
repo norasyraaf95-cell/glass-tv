@@ -41,6 +41,10 @@ final class ShahAlamWidgets {
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final TextView temp, condition, prayerName, prayerTime;
+    private final TextView[] prayerSlots;
+    private final android.graphics.drawable.GradientDrawable activePrayer;
+    private static final String[] PRAYER_KEYS = {"fajr", "dhuhr", "asr", "maghrib", "isha"};
+    private static final String[] PRAYER_LABELS = {"Subuh", "Zohor", "Asar", "Maghrib", "Isyak"};
     private boolean active;
     private boolean destroyed;
 
@@ -59,6 +63,19 @@ final class ShahAlamWidgets {
         condition = activity.findViewById(R.id.customWeatherCondition);
         prayerName = activity.findViewById(R.id.customPrayerName);
         prayerTime = activity.findViewById(R.id.customPrayerTime);
+        prayerSlots = new TextView[]{
+                activity.findViewById(R.id.prayerFajr),
+                activity.findViewById(R.id.prayerDhuhr),
+                activity.findViewById(R.id.prayerAsr),
+                activity.findViewById(R.id.prayerMaghrib),
+                activity.findViewById(R.id.prayerIsha)
+        };
+        activePrayer = new android.graphics.drawable.GradientDrawable();
+        activePrayer.setColor(0xB5CB268F);
+        activePrayer.setCornerRadius(11 * activity.getResources().getDisplayMetrics().density);
+        for (TextView slot : prayerSlots) {
+            slot.setPadding(0, 5, 0, 5);
+        }
     }
 
     void resume() {
@@ -169,21 +186,25 @@ final class ShahAlamWidgets {
             condition.setText("Cuaca belum tersedia");
         }
 
-        prayerName.setText("Waktu Solat · SGR01");
-        prayerTime.setText("Memuatkan jadual...");
+        prayerName.setText("Waktu Solat");
+        prayerTime.setText("");
+        for (int i = 0; i < prayerSlots.length; i++) {
+            prayerSlots[i].setText(PRAYER_LABELS[i] + "\n--:--");
+            prayerSlots[i].setTextColor(0xDDFFFFFF);
+            prayerSlots[i].setBackground(null);
+        }
         try {
             String month = format("yyyy-MM", new Date());
             if (!month.equals(cache.getString("prayer_month", ""))) {
-                prayerTime.setText("Jadual belum tersedia");
+                prayerName.setText("Jadual belum ada");
                 return;
             }
             JSONArray times = new JSONObject(cache.getString("prayer_json", "{}")).optJSONArray("prayerTime");
             if (times == null) {
-                prayerTime.setText("Jadual belum tersedia");
+                prayerName.setText("Jadual belum ada");
                 return;
             }
-            Date today = new Date();
-            String date = format("dd-MMM-yyyy", today);
+            String date = format("dd-MMM-yyyy", new Date());
             JSONObject entry = null;
             for (int i = 0; i < times.length(); i++) {
                 JSONObject one = times.optJSONObject(i);
@@ -193,29 +214,26 @@ final class ShahAlamWidgets {
                 }
             }
             if (entry == null) {
-                prayerTime.setText("Jadual belum tersedia");
+                prayerName.setText("Jadual belum ada");
                 return;
             }
-            String[] keys = {"fajr", "dhuhr", "asr", "maghrib", "isha"};
-            String[] names = {"Subuh", "Zohor", "Asar", "Maghrib", "Isyak"};
             Calendar now = Calendar.getInstance(MY);
             int minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
-            for (int i = 0; i < keys.length; i++) {
-                String time = shortTime(entry.optString(keys[i]));
+            int next = -1;
+            for (int i = 0; i < PRAYER_KEYS.length; i++) {
+                String time = shortTime(entry.optString(PRAYER_KEYS[i]));
                 if (time == null) continue;
+                prayerSlots[i].setText(PRAYER_LABELS[i] + "\n" + time);
                 int at = Integer.parseInt(time.substring(0, 2)) * 60
                         + Integer.parseInt(time.substring(3, 5));
-                if (minute < at) {
-                    prayerName.setText("Solat seterusnya · Shah Alam");
-                    prayerTime.setText(names[i] + "  " + time);
-                    return;
-                }
+                if (next < 0 && minute < at) next = i;
             }
-            // After Isyak show a truthful status rather than today's Subuh as a future time.
-            prayerName.setText("Waktu Solat · Shah Alam");
-            prayerTime.setText("Selesai untuk hari ini");
+            if (next >= 0) {
+                prayerSlots[next].setBackground(activePrayer);
+                prayerSlots[next].setTextColor(0xFFFFFFFF);
+            }
         } catch (Exception e) {
-            prayerTime.setText("Jadual belum tersedia");
+            prayerName.setText("Jadual belum ada");
         }
     }
 
