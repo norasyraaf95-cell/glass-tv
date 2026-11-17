@@ -264,7 +264,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             View card = findViewById(id);
             card.setBackground(new PremiumGlassDrawable(card, false));
             Backdrop.watch(card);
-            card.setElevation(2f * density);
+            card.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                            Math.min(view.getHeight() / 2f, 28f * density));
+                }
+            });
+            card.setElevation(3.5f * density);
         }
         // Install alongside the old launcher: no system component or existing Home is changed.
         shahAlamWidgets = new ShahAlamWidgets(this);
