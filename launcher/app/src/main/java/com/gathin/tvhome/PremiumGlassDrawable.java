@@ -47,21 +47,23 @@ final class PremiumGlassDrawable extends Drawable {
         dark.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
                         ? new int[]{0x77453660, 0x8B312548, 0x9A201D35}
-                        : new int[]{0x527E648F, 0x605F4B7B, 0x76534775},
+                        : new int[]{0x4A48335E, 0x4D35284F, 0x5C2C2247},
                 new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
         // Wide diffuse highlight across the top of the glass, no sharp white border.
         reflection.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
                         ? new int[]{0x57FFF4FF, 0x19E4D8FF, 0x00FFFFFF}
-                        : new int[]{0x70FFF4FF, 0x20DED5FF, 0x00FFFFFF},
+                        : new int[]{0x35FFF4FF, 0x14E9DFFF, 0x00FFFFFF},
                 new float[]{0f, .39f, .87f}, Shader.TileMode.CLAMP));
         lowerGlow.setShader(new LinearGradient(0f, 0f, 0f, 1f,
-                new int[]{0x00000000, 0x00FFA2E4, 0x18FF7DD2},
+                dock ? new int[]{0x00000000, 0x00FFA2E4, 0x18FF7DD2}
+                        : new int[]{0x00000000, 0x00FFA2E4, 0x0DFFA6E5},
                 new float[]{0f, .68f, 1f}, Shader.TileMode.CLAMP));
         rim.setStyle(Paint.Style.STROKE);
-        rim.setStrokeWidth(.72f * density);
+        rim.setStrokeWidth((dock ? .72f : .64f) * density);
         rim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
-                new int[]{0xC4FFF0FF, 0x57D6C3EF, 0x38C7B0E4, 0x8CE6CFF5},
+                dock ? new int[]{0xC4FFF0FF, 0x57D6C3EF, 0x38C7B0E4, 0x8CE6CFF5}
+                        : new int[]{0xA8F6E8FF, 0x52E0CDEE, 0x43C5A5D7, 0x87EDCFF2},
                 new float[]{0f, .28f, .73f, 1f}, Shader.TileMode.CLAMP));
         focusOuter.setStyle(Paint.Style.STROKE);
         focusMid.setStyle(Paint.Style.STROKE);
