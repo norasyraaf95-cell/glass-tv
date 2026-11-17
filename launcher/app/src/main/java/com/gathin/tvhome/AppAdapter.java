@@ -370,17 +370,36 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.card.setScaleY(focused ? 1.055f : 1f);
             h.card.setTranslationY(focused ? -2f * d : 0f);
             h.card.setTranslationZ(focused ? 5f * d : 0f);
-            h.card.setBackground(h.premiumGlass);
-            h.banner.setImageDrawable(null);
-            h.banner.setVisibility(View.GONE);
-            // Draw stable brand vector marks; installed app icon artwork varies by OS.
             int brand = position;
+            // These four assets are embedded in drawable-nodpi, based on the locked 5-tile
+            // design. Do NOT use installed apps' banners: those change with app updates.
+            int lockedTile = brand == 0 ? R.drawable.v72_smarttube
+                    : brand == 1 ? R.drawable.v72_netflix
+                    : brand == 2 ? R.drawable.v72_prime
+                    : brand == 3 ? R.drawable.v72_spotify : 0;
+            boolean fullArtwork = lockedTile != 0;
+            h.premiumGlass.setArtworkOnlyFocus(fullArtwork);
+            if (fullArtwork) {
+                // Artwork includes its own border; overlay only the animated focus line.
+                // This avoids doubled white/pink borders on the corners.
+                h.card.setBackgroundColor(Color.TRANSPARENT);
+                h.card.setForeground(h.premiumGlass);
+                h.banner.setScaleType(ImageView.ScaleType.FIT_XY);
+                h.banner.setImageResource(lockedTile);
+                h.banner.setVisibility(View.VISIBLE);
+            } else {
+                h.card.setForeground(null);
+                h.card.setBackground(h.premiumGlass);
+                h.banner.setImageDrawable(null);
+                h.banner.setVisibility(View.GONE);
+            }
+            // Keep vectors as a fallback for other screens, but not on branded cards.
             int art = brand == 0 ? R.drawable.custom_logo_smarttube
                     : brand == 1 ? R.drawable.custom_logo_netflix
                     : brand == 2 ? R.drawable.custom_logo_prime
                     : brand == 3 ? R.drawable.custom_logo_spotify
                     : brand == 4 ? R.drawable.ic_custom_apps : 0;
-            if (art != 0) {
+            if (!fullArtwork && art != 0) {
                 h.icon.setImageResource(art);
                 h.icon.setVisibility(View.VISIBLE);
                 iconLp.width = Math.round(40 * d);
@@ -402,8 +421,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.label.setCompoundDrawablePadding(0);
             h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
             h.label.setPadding(Math.round(60 * d), 0, Math.round(6 * d), 0);
-            h.label.setVisibility(View.VISIBLE);
+            h.label.setVisibility(fullArtwork ? View.GONE : View.VISIBLE);
         } else {
+            h.premiumGlass.setArtworkOnlyFocus(false);
+            h.card.setForeground(null);
             h.card.setBackgroundResource(R.drawable.tile_bg);
             iconLp.width = Math.round(48 * d);
             iconLp.height = Math.round(48 * d);
