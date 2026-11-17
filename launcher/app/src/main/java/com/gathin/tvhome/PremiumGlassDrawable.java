@@ -96,16 +96,16 @@ final class PremiumGlassDrawable extends Drawable {
                 (dock ? 19f : 28f) * density);
         boolean focused = dock && focusAmount > .005f;
         if (artworkOnlyFocus) {
+            // V7.3: brand tiles already contain their own softly blended material.
+            // Never overlay another white/pink outline on top of their corners.
+            // Only a low-opacity, whole-surface tint marks remote focus.
             if (focused) {
-                float inset = 1.2f * density;
+                float inset = 1.5f * density;
                 inner.set(bounds);
                 inner.inset(inset, inset);
-                matrix.setScale(bounds.width(), bounds.height());
-                matrix.postTranslate(bounds.left, bounds.top);
-                focusRim.getShader().setLocalMatrix(matrix);
-                focusRim.setAlpha(Math.round(225f * opacity * focusAmount));
+                focusWash.setAlpha(Math.round(0x22 * opacity * focusAmount));
                 canvas.drawRoundRect(inner, Math.max(0f, radius - inset),
-                        Math.max(0f, radius - inset), focusRim);
+                        Math.max(0f, radius - inset), focusWash);
             }
             return;
         }
