@@ -360,7 +360,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
         FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
         if (inDock) {
-            h.card.setBackgroundResource(R.drawable.custom_dock_tile);
+            h.card.setBackground(h.premiumGlass);
             h.banner.setImageDrawable(null);
             h.banner.setVisibility(View.GONE);
             // Draw stable brand vector marks; installed app icon artwork varies by OS.
@@ -603,6 +603,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     static final class Holder extends RecyclerView.ViewHolder {
         final View card;
+        final PremiumGlassDrawable premiumGlass;
         final ImageView banner;
         final ImageView icon;
         final TextView label;
@@ -612,6 +613,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         Holder(View v, TileListener listener, boolean reducedMotion) {
             super(v);
             card = v.findViewById(R.id.card);
+            premiumGlass = new PremiumGlassDrawable(card, true);
+            Backdrop.watch(card);
             banner = v.findViewById(R.id.banner);
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);
@@ -645,7 +648,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     view.setOutlineAmbientShadowColor(0xDDF729B4);
                     view.setOutlineSpotShadowColor(0xDDF729B4);
                 }
-                view.setElevation(dockFocus ? 10f * density : 0f);
+                view.setElevation(dockFocus ? 10f * density : 2.5f * density);
+                view.invalidate();
                 view.animate().cancel();
                 name.animate().cancel();
                 if (reducedMotion) {
