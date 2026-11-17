@@ -109,17 +109,19 @@ final class PremiumGlassDrawable extends Drawable {
 
         if (focused) {
             // Soft luminous halo in layers; light should bloom gently, not form a rigid box.
-            float[] widths = {4f, 2.6f, .8f};
-            Paint[] paints = {focusOuter, focusMid, focusInner};
-            for (int i = 0; i < paints.length; i++) {
-                inner.set(bounds);
-                inner.inset(widths[i] * density, widths[i] * density);
-                paints[i].setAlpha(Math.round(
-                        (i == 0 ? 0x25 : i == 1 ? 0x66 : 0xE8) * opacity));
-                canvas.drawRoundRect(inner, radius - widths[i] * density,
-                        radius - widths[i] * density, paints[i]);
-            }
+            drawHalo(canvas, focusOuter, 4f, radius, 0x25);
+            drawHalo(canvas, focusMid, 2.6f, radius, 0x66);
+            drawHalo(canvas, focusInner, .8f, radius, 0xE8);
         }
+    }
+
+    // Reuses one rectangle and three Paints; no per-focus-frame array allocations.
+    private void drawHalo(Canvas canvas, Paint paint, float insetDp, float radius, int alpha) {
+        float inset = insetDp * density;
+        inner.set(bounds);
+        inner.inset(inset, inset);
+        paint.setAlpha(Math.round(alpha * opacity));
+        canvas.drawRoundRect(inner, radius - inset, radius - inset, paint);
     }
 
     @Override public void setAlpha(int alpha) {
