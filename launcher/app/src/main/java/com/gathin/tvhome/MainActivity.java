@@ -863,15 +863,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Exactly the zoomed card, behind it: at rest the app hides it completely, so it never lies
         // over an app and only shows while it travels between places.
         float cardRadius = AppAdapter.cornerRadius(card.getWidth(), density) * AppAdapter.FOCUS_SCALE;
-        if (gliderOnPill) {
-            // Down from the top menu it travels dark, and turns to glass once it lands, unseen behind
-            // the app.
+        if (position < COLUMNS) {
+            // Reference dock draws its own single pink focus rim and glow. The old Glider
+            // drew a second, slightly offset white rim underneath the scaled card,
+            // especially visible at rounded corners on a physical TV.
+            // Keep Glider only for the app grid and top settings navigation.
+            glider.hideNow();
+        } else if (gliderOnPill) {
             glider.moveTo(x + pad, y + pad, x + w - pad, y + h - pad, cardRadius);
             glider.onArrive(() -> {
                 if (!gliderOnPill) glider.setStyle(Glider.GLASS);
             });
         } else {
-            // From app to app it is a pane of glass gliding behind them.
             glider.setStyle(Glider.GLASS);
             glider.moveTo(x + pad, y + pad, x + w - pad, y + h - pad, cardRadius);
         }
