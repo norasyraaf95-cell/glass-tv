@@ -421,7 +421,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 h.banner.setVisibility(View.GONE);
             }
             // Keep vectors as a fallback for other screens, but not on branded cards.
-            int art = brand == 0 ? R.drawable.custom_logo_smarttube
+            int art = brand == 0 ? R.drawable.custom_logo_youtube
                     : brand == 1 ? R.drawable.custom_logo_netflix
                     : brand == 2 ? R.drawable.custom_logo_prime
                     : brand == 3 ? R.drawable.custom_logo_spotify
