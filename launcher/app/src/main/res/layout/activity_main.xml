@@ -108,10 +108,10 @@
                         android:format12Hour="h:mm"
                         android:format24Hour="HH:mm"
                         android:textColor="#FFFFFFFF"
-                        android:textSize="52sp"
+                        android:textSize="64sp"
                         android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 300"
-                        android:letterSpacing="-0.04"
+                        android:fontVariationSettings="'wght' 700"
+                        android:letterSpacing="-0.045"
                         android:includeFontPadding="false" />
 
                     <!-- AM/PM over the date, both starting at the same line: the date on the digits'
@@ -132,9 +132,9 @@
                             android:format12Hour="a"
                             android:format24Hour=""
                             android:textColor="#B3FFFFFF"
-                            android:textSize="15sp"
+                            android:textSize="16sp"
                             android:fontFamily="@font/outfit"
-                            android:fontVariationSettings="'wght' 500"
+                            android:fontVariationSettings="'wght' 600"
                             android:letterSpacing="0.08"
                             android:textAllCaps="true" />
 
