@@ -647,7 +647,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 @Override
                 public void getOutline(View view, Outline outline) {
                     // 16dp at the design width, scaled down with the tile so small tiles keep the same shape.
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), cornerRadius(view.getWidth(), density));
+                    // Match PremiumGlassDrawable's 19dp radius exactly inside the dock.
+                    // A different Android clip radius was shearing the glowing corners.
+                    int pos = getBindingAdapterPosition();
+                    float radius = pos >= 0 && pos < 5
+                            ? Math.min(view.getHeight() / 2f, 19f * density)
+                            : cornerRadius(view.getWidth(), density);
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
                 }
             });
             card.setClipToOutline(true);
