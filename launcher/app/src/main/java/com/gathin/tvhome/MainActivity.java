@@ -235,6 +235,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void run() {
             updateShamsiDate();
+            updateCustomDate();
             updateWifiLabel();
             refreshPlacesIfDue();
             handler.postDelayed(this, MINUTE_MS);
@@ -248,7 +249,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
-        COLUMNS = cfg.columns;
+        COLUMNS = 5; // Reference V2: four apps and functional Apps tile on one dock row.
         reducedMotion = cfg.reducedMotion;
         liveTvPkg = cfg.liveTvPackage;
         liveTvAction = cfg.liveTvAction;
@@ -291,6 +292,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient = findViewById(R.id.ambient);
         Backdrop.setWorker(wallDecoder, handler);
         heroShelf = findViewById(R.id.heroShelf);
+        // The reference is a quiet landscape: no large "YouTube" label floating above dock.
+        heroShelf.setVisibility(View.GONE);
         heroName = findViewById(R.id.heroName);
         heroDesc = findViewById(R.id.heroDesc);
         heroWhere = findViewById(R.id.heroWhere);
@@ -308,7 +311,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (heroBottom > 0) v.setY(heroBottom - v.getHeight());
         });
         btnWifi = findViewById(R.id.btnWifi);
-        if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
+        btnWifi.setVisibility(View.VISIBLE); // Reference: Wi-Fi glyph at top right.
         shamsiDate = findViewById(R.id.shamsiDate);
         shamsi = cfg.shamsiDate;
         if (shamsi) {
@@ -317,20 +320,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
-        // Beside the clock, the date sits on the digits' baseline, and AM/PM rests halfway between
-        // the top of the digits and the top of the date, its letters' foot on that line.
-        TextView clock = findViewById(R.id.clock), amPm = findViewById(R.id.ampm), dateLine = findViewById(R.id.date);
-        View dateBlock = findViewById(R.id.dateBlock);
-        dateBlock.setTranslationY(dateLine.getPaint().getFontMetrics().descent - clock.getPaint().getFontMetrics().descent);
-        // Placed once the whole column is laid out, AM/PM and the date both.
-        ((View) dateBlock.getParent()).addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            android.graphics.Rect cap = new android.graphics.Rect();
-            dateLine.getPaint().getTextBounds("O", 0, 1, cap);
-            float capsAtTop = ClockDream.capInset(clock, "0") - ClockDream.capInset(amPm, "AM");
-            float foot = amPm.getTop() + capsAtTop + amPm.getBaseline();
-            float dateTop = dateBlock.getTop() + dateBlock.getTranslationY() + dateLine.getTop() + dateLine.getBaseline() + cap.top;
-            amPm.setTranslationY(Math.round(capsAtTop + (foot + dateTop) / 2f - foot));
-        });
+        // Date is now positioned ABOVE the large clock, as in Windy Clouds V2 reference.
+        updateCustomDate();
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
@@ -366,7 +357,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glider.addCompanion(grid, tray.area);
         for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
             View pill = findViewById(id);
-            pill.setBackground(new GlassDrawable(pill, 21 * density, density, glider));
+            pill.setBackgroundColor(Color.TRANSPARENT); // Reference has simple top icons, no glass rings.
             glider.addCompanion(pill);
             Backdrop.watch(pill);
             pill.setOnFocusChangeListener((v, has) -> {
@@ -687,6 +678,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resuming = true;
         reloadApps(true);
         updateShamsiDate();
+        updateCustomDate();
         updateWifiLabel();
         updateInputsButton();
         shahAlamWidgets.resume();
@@ -1482,6 +1474,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     // ---- top bar ---------------------------------------------------------------------------------
 
+    /** Date from the reference is above clock, with genuine Malaysian day/month text. */
+    private void updateCustomDate() {
+        TextView line = findViewById(R.id.date);
+        if (line == null) return;
+        java.text.SimpleDateFormat df = new java.text.SimpleDateFormat(
+                "EEEE   |   dd MMM yyyy", new Locale("ms", "MY"));
+        df.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+        line.setText(df.format(new java.util.Date()));
+    }
+
+    @Override
+    public void onAllAppsPressed() {
+        // Reuse the launcher app grid: navigate to the first application below the dock.
+        if (adapter != null && adapter.getItemCount() > COLUMNS) focusTile(COLUMNS);
+    }
+
     private void updateShamsiDate() {
         if (shamsi) shamsiDate.setText(Shamsi.today());
     }
@@ -1545,6 +1553,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnWifi.setText(text);
         }
         btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+        btnWifi.setText(""); // Reference uses Wi-Fi glyph only; click still opens network settings.
     }
 
     /** The network pill opens the VPN app when one is configured and installed, otherwise Wi-Fi settings. */
@@ -1581,7 +1590,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
         }
-        btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
+        btnInputs.setVisibility(View.GONE); // Match reference: only Wi-Fi and Settings on top.
     }
 
     /** The Live TV app's launch intent: its leanback entry point, or the configured action if it has none. */
