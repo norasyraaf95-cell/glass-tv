@@ -132,20 +132,26 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         if (lockedTiles == null) {
             lockedTiles = new Bitmap[5];
             java.io.File folder = ctx.getExternalFilesDir(null);
-            String[] names = {"smarttube_final.webp", "netflix_final.webp",
-                    "prime_final.webp", "spotify_final.webp", "apps_final.webp"};
             if (folder != null) {
-                for (int i = 0; i < names.length; i++) {
-                    try {
-                        java.io.File image = new java.io.File(folder, names[i]);
-                        if (!image.isFile() || image.length() > 131072) continue;
+                try {
+                    // One lightweight WebP contains exactly five approved tiles.
+                    // Split it once on launch; do not decode during DPAD focus animation.
+                    java.io.File image = new java.io.File(folder, "locked_tiles_v72.webp");
+                    if (image.isFile() && image.length() < 131072) {
                         android.graphics.BitmapFactory.Options opts =
                                 new android.graphics.BitmapFactory.Options();
                         opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                        lockedTiles[i] = android.graphics.BitmapFactory.decodeFile(
+                        Bitmap sprite = android.graphics.BitmapFactory.decodeFile(
                                 image.getAbsolutePath(), opts);
-                    } catch (RuntimeException ignored) {}
-                }
+                        if (sprite != null && sprite.getWidth() % 5 == 0) {
+                            int width = sprite.getWidth() / 5;
+                            for (int i = 0; i < 5; i++) {
+                                lockedTiles[i] = Bitmap.createBitmap(sprite,
+                                        i * width, 0, width, sprite.getHeight());
+                            }
+                        }
+                    }
+                } catch (RuntimeException ignored) {}
             }
         }
         return lockedTiles[index];
