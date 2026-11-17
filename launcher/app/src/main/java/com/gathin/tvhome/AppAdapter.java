@@ -140,14 +140,22 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     if (image.isFile() && image.length() < 131072) {
                         android.graphics.BitmapFactory.Options opts =
                                 new android.graphics.BitmapFactory.Options();
-                        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                        // Avoid RGB_565 colour banding on the five small gradients.
+                        opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                        opts.inDither = true;
                         Bitmap sprite = android.graphics.BitmapFactory.decodeFile(
                                 image.getAbsolutePath(), opts);
                         if (sprite != null && sprite.getWidth() % 5 == 0) {
                             int width = sprite.getWidth() / 5;
+                            int height = sprite.getHeight();
+                            // Trim only the built-in hard outer rim. Never change
+                            // the locked SmartTube, Netflix, Prime or Spotify logo.
+                            int trimX = Math.max(1, Math.round(width * .027f));
+                            int trimY = Math.max(1, Math.round(height * .061f));
                             for (int i = 0; i < 5; i++) {
                                 lockedTiles[i] = Bitmap.createBitmap(sprite,
-                                        i * width, 0, width, sprite.getHeight());
+                                        i * width + trimX, trimY,
+                                        width - trimX * 2, height - trimY * 2);
                             }
                         }
                     }
