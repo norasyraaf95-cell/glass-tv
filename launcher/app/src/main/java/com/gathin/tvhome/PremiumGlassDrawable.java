@@ -34,9 +34,8 @@ final class PremiumGlassDrawable extends Drawable {
     private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint lowerGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint focusOuter = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint focusMid = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint focusInner = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint focusRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint focusWash = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
     private float opacity = 1f;
     /** A reused animator fades the magenta focus between cards instead of flashing instantly. */
@@ -70,15 +69,14 @@ final class PremiumGlassDrawable extends Drawable {
                 dock ? new int[]{0xC4FFF0FF, 0x57D6C3EF, 0x38C7B0E4, 0x8CE6CFF5}
                         : new int[]{0xA8F6E8FF, 0x52E0CDEE, 0x43C5A5D7, 0x87EDCFF2},
                 new float[]{0f, .28f, .73f, 1f}, Shader.TileMode.CLAMP));
-        focusOuter.setStyle(Paint.Style.STROKE);
-        focusMid.setStyle(Paint.Style.STROKE);
-        focusInner.setStyle(Paint.Style.STROKE);
-        focusOuter.setStrokeWidth(9.5f * density);
-        focusMid.setStrokeWidth(5f * density);
-        focusInner.setStrokeWidth(1.4f * density);
-        focusOuter.setColor(0x25FF3DBB);
-        focusMid.setColor(0x66F93DAE);
-        focusInner.setColor(0xE8FF9BD9);
+        // A single anti-aliased border replaces the three concentric strokes.
+        // The remaining soft halo comes from the View's colored elevation shadow.
+        focusRim.setStyle(Paint.Style.STROKE);
+        focusRim.setStrokeWidth(1.55f * density);
+        focusRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
+                new int[]{0xF3FFA8DC, 0xEFFF69C3, 0xDCF641AD, 0xF0FF9ED7},
+                new float[]{0f, .28f, .72f, 1f}, Shader.TileMode.CLAMP));
+        focusWash.setColor(0x20F348B5);
         focusFade = ValueAnimator.ofFloat(0f, 1f);
         focusFade.setDuration(195L);
         focusFade.setInterpolator(new PathInterpolator(.2f, .72f, .25f, 1f));
@@ -91,7 +89,8 @@ final class PremiumGlassDrawable extends Drawable {
     @Override public void draw(@NonNull Canvas canvas) {
         bounds.set(getBounds());
         if (bounds.width() <= 0f || bounds.height() <= 0f) return;
-        float radius = dock ? 19f * density : Math.min(bounds.height() / 2f, 28f * density);
+        float radius = Math.min(bounds.height() / 2f,
+                (dock ? 19f : 28f) * density);
         boolean focused = dock && focusAmount > .005f;
 
         // The native launcher already prepares a blurred wallpaper at half resolution on
@@ -118,24 +117,26 @@ final class PremiumGlassDrawable extends Drawable {
         matrix.setScale(bounds.width(), bounds.height());
         matrix.postTranslate(bounds.left, bounds.top);
         rim.getShader().setLocalMatrix(matrix);
-        rim.setAlpha(Math.round(255f * opacity));
-        canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
+        // Fade the normal pale rim OUT as the magenta focus fades IN: no double outline.
+        rim.setAlpha(Math.round(255f * opacity * (dock ? 1f - focusAmount : 1f)));
+        if (!dock || focusAmount < .999f)
+            canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
 
         if (focused) {
-            // Soft luminous halo in layers; light should bloom gently, not form a rigid box.
-            drawHalo(canvas, focusOuter, 4f, radius, 0x25);
-            drawHalo(canvas, focusMid, 2.6f, radius, 0x66);
-            drawHalo(canvas, focusInner, .8f, radius, 0xE8);
+            // Uniform round geometry with the Android clip outline (19dp in dock).
+            // Gentle interior tint adds depth without drawing extra hard-edged rings.
+            float focusInset = 1.1f * density;
+            inner.set(bounds);
+            inner.inset(focusInset, focusInset);
+            float focusRadius = Math.max(0f, radius - focusInset);
+            focusWash.setAlpha(Math.round(0x20 * opacity * focusAmount));
+            canvas.drawRoundRect(inner, focusRadius, focusRadius, focusWash);
+            matrix.setScale(bounds.width(), bounds.height());
+            matrix.postTranslate(bounds.left, bounds.top);
+            focusRim.getShader().setLocalMatrix(matrix);
+            focusRim.setAlpha(Math.round(255f * opacity * focusAmount));
+            canvas.drawRoundRect(inner, focusRadius, focusRadius, focusRim);
         }
-    }
-
-    // Reuses one rectangle and three Paints; no per-focus-frame array allocations.
-    private void drawHalo(Canvas canvas, Paint paint, float insetDp, float radius, int alpha) {
-        float inset = insetDp * density;
-        inner.set(bounds);
-        inner.inset(inset, inset);
-        paint.setAlpha(Math.round(alpha * opacity * focusAmount));
-        canvas.drawRoundRect(inner, radius - inset, radius - inset, paint);
     }
 
     /** Start from the current brightness, including when the remote is pressed rapidly. */
