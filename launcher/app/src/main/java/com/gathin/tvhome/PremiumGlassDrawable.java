@@ -75,9 +75,9 @@ final class PremiumGlassDrawable extends Drawable {
         // A single anti-aliased border replaces the three concentric strokes.
         // The remaining soft halo comes from the View's colored elevation shadow.
         focusRim.setStyle(Paint.Style.STROKE);
-        focusRim.setStrokeWidth(1.55f * density);
+        focusRim.setStrokeWidth(1.05f * density);
         focusRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
-                new int[]{0xF3FFA8DC, 0xEFFF69C3, 0xDCF641AD, 0xF0FF9ED7},
+                new int[]{0xECFFF0FF, 0xD8FF96D6, 0xC9DABAF4, 0xDAFFD3F2},
                 new float[]{0f, .28f, .72f, 1f}, Shader.TileMode.CLAMP));
         focusWash.setColor(0x20F348B5);
         focusFade = ValueAnimator.ofFloat(0f, 1f);
@@ -96,16 +96,22 @@ final class PremiumGlassDrawable extends Drawable {
                 (dock ? 19f : 28f) * density);
         boolean focused = dock && focusAmount > .005f;
         if (artworkOnlyFocus) {
-            // V7.3: brand tiles already contain their own softly blended material.
-            // Never overlay another white/pink outline on top of their corners.
-            // Only a low-opacity, whole-surface tint marks remote focus.
+            // V7.5 Option 1: the five static WebP tiles include their own transparent
+            // glass surfaces. The only runtime change is a restrained, one-stroke
+            // focus highlight, drawn INSIDE the rounded outline. No view shadow,
+            // no realtime blur, no external glow or extra bitmap allocations.
             if (focused) {
-                float inset = 1.5f * density;
+                float inset = 1.2f * density;
                 inner.set(bounds);
                 inner.inset(inset, inset);
-                focusWash.setAlpha(Math.round(0x22 * opacity * focusAmount));
-                canvas.drawRoundRect(inner, Math.max(0f, radius - inset),
-                        Math.max(0f, radius - inset), focusWash);
+                float innerRadius = Math.max(0f, radius - inset);
+                focusWash.setAlpha(Math.round(0x17 * opacity * focusAmount));
+                canvas.drawRoundRect(inner, innerRadius, innerRadius, focusWash);
+                matrix.setScale(bounds.width(), bounds.height());
+                matrix.postTranslate(bounds.left, bounds.top);
+                focusRim.getShader().setLocalMatrix(matrix);
+                focusRim.setAlpha(Math.round(205f * opacity * focusAmount));
+                canvas.drawRoundRect(inner, innerRadius, innerRadius, focusRim);
             }
             return;
         }
