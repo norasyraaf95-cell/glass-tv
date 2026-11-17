@@ -1,108 +1,131 @@
 package com.gathin.tvhome;
 
 import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.RadialGradient;
-import android.graphics.Shader;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.SystemClock;
+import android.graphics.SurfaceTexture;
+import android.media.MediaPlayer;
+import android.view.Surface;
+import android.view.TextureView;
 import android.util.AttributeSet;
-import android.view.View;
+
+import java.io.File;
+import java.io.IOException;
 
 /**
- * Very light atmospheric drift: softly faded, low-alpha cloud wisps over a static wallpaper.
- * No video decoder, images, bitmap allocations or per-frame gradient construction.
- * At most 12 frames per second; completely stopped while Home is not foreground.
+ * Replays the user's exact Windy Clouds V2 motion beneath the native UI.
+ * The source is a small, silent, 1280x720 15fps H.264 file in this app's external files:
+ *    windy_clouds.mp4
+ *
+ * When Home pauses, release the decoder completely: important on a 1 GB Mi TV Stick.
+ * If missing or unsupported, Glass TV's static wallpaper remains behind this transparent view.
  */
-public final class WindyCloudView extends View {
-    private static final long FRAME_MS = 83;
-    private final Handler handler = new Handler(Looper.getMainLooper());
-    private final Paint mist = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint pink = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private boolean homeVisible;
-    private boolean userEnabled;
-    private boolean scheduled;
-    private long startTime;
-
-    private final Runnable frame = new Runnable() {
-        @Override public void run() {
-            scheduled = false;
-            if (!homeVisible || !userEnabled) return;
-            invalidate();
-            schedule();
-        }
-    };
+public final class WindyCloudView extends TextureView
+        implements TextureView.SurfaceTextureListener {
+    private final File video;
+    private boolean enabled;
+    private boolean foreground;
+    private MediaPlayer player;
+    private Surface surface;
 
     public WindyCloudView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        mist.setShader(new RadialGradient(0f, 0f, 1f,
-                new int[]{0x27EEE1FF, 0x18D8C7FF, 0x00D8C7FF},
-                new float[]{0f, .45f, 1f}, Shader.TileMode.CLAMP));
-        pink.setShader(new RadialGradient(0f, 0f, 1f,
-                new int[]{0x22FFD7F7, 0x10FFC5EF, 0x00FFC5EF},
-                new float[]{0f, .42f, 1f}, Shader.TileMode.CLAMP));
-        setClickable(false);
+        File dir = context.getExternalFilesDir(null);
+        video = dir == null ? null : new File(dir, "windy_clouds.mp4");
+        setSurfaceTextureListener(this);
+        setOpaque(false);
+        setAlpha(0f);
         setFocusable(false);
-        setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        setClickable(false);
     }
 
-    void setCloudsEnabled(boolean enabled) {
-        userEnabled = enabled;
-        setVisibility(enabled ? VISIBLE : GONE);
-        if (enabled && homeVisible) schedule();
-        else handler.removeCallbacks(frame);
+    boolean hasVideo() {
+        return video != null && video.isFile() && video.length() > 1024;
+    }
+
+    void setCloudsEnabled(boolean value) {
+        enabled = value;
+        if (!enabled || !hasVideo()) {
+            releasePlayer();
+            setAlpha(0f);
+            setVisibility(GONE);
+            return;
+        }
+        setVisibility(VISIBLE);
+        maybeStart();
     }
 
     void onHomeResume() {
-        homeVisible = true;
-        if (startTime == 0L) startTime = SystemClock.uptimeMillis();
-        schedule();
+        foreground = true;
+        if (enabled && hasVideo()) {
+            setVisibility(VISIBLE);
+            maybeStart();
+        }
     }
 
     void onHomePause() {
-        homeVisible = false;
-        handler.removeCallbacks(frame);
-        scheduled = false;
+        foreground = false;
+        releasePlayer(); // No video decoding while YouTube, Netflix etc are in front.
+        setAlpha(0f);
     }
 
-    private void schedule() {
-        if (!scheduled && homeVisible && userEnabled) {
-            scheduled = true;
-            handler.postDelayed(frame, FRAME_MS);
+    private void maybeStart() {
+        if (!foreground || !enabled || !hasVideo() || player != null || !isAvailable()) return;
+        try {
+            surface = new Surface(getSurfaceTexture());
+            MediaPlayer mp = new MediaPlayer();
+            player = mp;
+            mp.setSurface(surface);
+            mp.setDataSource(video.getAbsolutePath());
+            mp.setVolume(0f, 0f);
+            mp.setLooping(true);
+            mp.setOnPreparedListener(p -> {
+                if (foreground && enabled) {
+                    p.start();
+                    setAlpha(1f);
+                }
+            });
+            mp.setOnErrorListener((p, what, extra) -> {
+                releasePlayer();
+                setAlpha(0f);
+                return true; // Fail safely to the static wallpaper.
+            });
+            mp.prepareAsync();
+        } catch (Exception ex) {
+            releasePlayer();
+            setAlpha(0f);
         }
     }
 
-    @Override protected void onDraw(Canvas c) {
-        if (!userEnabled || getWidth() == 0 || getHeight() == 0) return;
-        float w = getWidth(), h = getHeight();
-        float sec = (SystemClock.uptimeMillis() - startTime) / 1000f;
-        // Offsets and speeds differ per layer, mimicking wind through the upper sky and valley.
-        for (int i = 0; i < 5; i++) {
-            float speed = w / (i % 2 == 0 ? 37f : 48f);
-            float span = w * 1.95f;
-            float x = ((sec * speed + i * (span / 5f)) % span) - w * .40f;
-            float y = h * (i < 3 ? (.20f + .10f * i) : (.54f + .05f * (i - 3)));
-            float rw = w * (i < 3 ? .37f : .46f);
-            float rh = h * (i < 3 ? .087f : .075f);
-            drawWisp(c, x, y, rw, rh, i % 2 == 0 ? mist : pink);
-            drawWisp(c, x - rw * .34f, y + rh * .20f, rw * .72f, rh * .8f,
-                    i % 2 == 0 ? mist : pink);
+    private void releasePlayer() {
+        MediaPlayer mp = player;
+        player = null;
+        if (mp != null) {
+            mp.setOnPreparedListener(null);
+            mp.setOnErrorListener(null);
+            try { mp.stop(); } catch (IllegalStateException ignored) {}
+            mp.release();
+        }
+        if (surface != null) {
+            surface.release();
+            surface = null;
         }
     }
 
-    private static void drawWisp(Canvas canvas, float x, float y, float rx, float ry, Paint p) {
-        canvas.save();
-        canvas.translate(x, y);
-        canvas.scale(rx, ry);
-        canvas.drawCircle(0f, 0f, 1f, p);
-        canvas.restore();
+    @Override public void onSurfaceTextureAvailable(SurfaceTexture s, int w, int h) {
+        maybeStart();
     }
+
+    @Override public void onSurfaceTextureSizeChanged(SurfaceTexture s, int w, int h) {}
+
+    @Override public boolean onSurfaceTextureDestroyed(SurfaceTexture s) {
+        releasePlayer();
+        setAlpha(0f);
+        return true;
+    }
+
+    @Override public void onSurfaceTextureUpdated(SurfaceTexture s) {}
 
     @Override protected void onDetachedFromWindow() {
-        onHomePause();
+        releasePlayer();
         super.onDetachedFromWindow();
     }
 }
