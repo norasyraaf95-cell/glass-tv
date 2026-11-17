@@ -131,17 +131,22 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         if (index < 0 || index > 3) return null;
         if (lockedTiles == null) {
             lockedTiles = new Bitmap[4];
-            try {
-                android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
-                opts.inPreferredConfig = Bitmap.Config.RGB_565;
-                Bitmap strip = android.graphics.BitmapFactory.decodeResource(
-                        ctx.getResources(), R.drawable.v72_strip, opts);
-                if (strip != null && strip.getWidth() >= 4) {
-                    int w = strip.getWidth() / 4;
-                    for (int i = 0; i < 4; i++) lockedTiles[i] =
-                            Bitmap.createBitmap(strip, i * w, 0, w, strip.getHeight());
+            java.io.File folder = ctx.getExternalFilesDir(null);
+            String[] names = {"smarttube_final.webp", "netflix_final.webp",
+                    "prime_final.webp", "spotify_final.webp"};
+            if (folder != null) {
+                for (int i = 0; i < names.length; i++) {
+                    try {
+                        java.io.File image = new java.io.File(folder, names[i]);
+                        if (!image.isFile() || image.length() > 131072) continue;
+                        android.graphics.BitmapFactory.Options opts =
+                                new android.graphics.BitmapFactory.Options();
+                        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                        lockedTiles[i] = android.graphics.BitmapFactory.decodeFile(
+                                image.getAbsolutePath(), opts);
+                    } catch (RuntimeException ignored) {}
                 }
-            } catch (RuntimeException ignored) {}
+            }
         }
         return lockedTiles[index];
     }
@@ -390,7 +395,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.card.setTranslationY(focused ? -2f * d : 0f);
             h.card.setTranslationZ(focused ? 5f * d : 0f);
             int brand = position;
-            // These four assets are embedded in drawable-nodpi, based on the locked 5-tile
+            // These four assets ship with the installer, based on the locked 5-tile
             // design. Do NOT use installed apps' banners: those change with app updates.
             Bitmap lockedTile = lockedTile(ctx, brand);
             boolean fullArtwork = lockedTile != null;
