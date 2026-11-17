@@ -265,8 +265,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         // Four requested brand slots plus Apps. Keep Spotify in slot 4 and never substitute an unrelated app.
         // A missing app displays a labelled shortcut that explains it is not installed.
         String[] dockPackages = {"com.google.android.youtube.tv", "com.netflix.ninja",
-                "com.vuclip.viu.tv", "com.spotify.tv.android"};
-        String[] dockLabels = {"YouTube", "Netflix", "Viu", "Spotify"};
+                "com.amazon.amazonvideo.livingroom", "com.spotify.tv.android"};
+        String[] dockLabels = {"YouTube", "Netflix", "Prime Video", "Spotify"};
         List<Entry> ordered = new ArrayList<>();
         for (int i = 0; i < dockPackages.length; i++) {
             Entry chosen = null;
@@ -277,7 +277,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 boolean match = candidate.pkg.equals(dockPackages[i]);
                 if (i == 0) match |= pkg.contains("youtube") && !pkg.contains("music");
                 if (i == 1) match |= pkg.contains("netflix");
-                if (i == 2) match |= pkg.contains("viu") || name.equals("viu for home");
+                if (i == 2) match |= pkg.contains("amazonvideo") || pkg.contains("avod.thirdpartyclient")
+                        || name.equals("prime video") || name.contains("prime video");
                 if (i == 3) match |= pkg.contains("spotify") && !pkg.contains("connect");
                 if (match) { chosen = candidate; break; }
             }
@@ -367,7 +368,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             int brand = position;
             int art = brand == 0 ? R.drawable.custom_logo_youtube
                     : brand == 1 ? R.drawable.custom_logo_netflix
-                    : brand == 2 ? R.drawable.custom_logo_viu
+                    : brand == 2 ? R.drawable.custom_logo_prime
                     : brand == 3 ? R.drawable.custom_logo_spotify
                     : brand == 4 ? R.drawable.ic_custom_apps : 0;
             if (art != 0) {
@@ -384,8 +385,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             labelLp.gravity = Gravity.CENTER_VERTICAL;
             h.label.setLayoutParams(labelLp);
             h.label.setText(brand == 0 ? "YouTube" : brand == 1 ? "Netflix"
-                    : brand == 2 ? "Viu" : brand == 3 ? "Spotify" : "Apps");
-            h.label.setTextSize(17f);
+                    : brand == 2 ? "Prime Video" : brand == 3 ? "Spotify" : "Apps");
+            h.label.setTextSize(brand == 2 ? 15f : 17f);
             h.label.setTypeface(android.graphics.Typeface.create(
                     "sans-serif-medium", android.graphics.Typeface.NORMAL));
             h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
