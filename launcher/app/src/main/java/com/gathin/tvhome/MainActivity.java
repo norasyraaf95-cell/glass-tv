@@ -270,7 +270,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                             Math.min(view.getHeight() / 2f, 28f * density));
                 }
             });
-            card.setElevation(3.5f * density);
+            // Android's real elevation casts a hard BLACK oval under each rounded widget
+            // on the Mi Stick compositor. Keep only the soft optical rim from our drawable.
+            // No View shadow, no per-frame blur and no extra overdraw.
+            card.setStateListAnimator(null);
+            card.setElevation(0f);
+            card.setTranslationZ(0f);
         }
         // Install alongside the old launcher: no system component or existing Home is changed.
         shahAlamWidgets = new ShahAlamWidgets(this);
