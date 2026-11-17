@@ -128,12 +128,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     private static Bitmap[] lockedTiles;
     private static synchronized Bitmap lockedTile(Context ctx, int index) {
-        if (index < 0 || index > 3) return null;
+        if (index < 0 || index > 4) return null;
         if (lockedTiles == null) {
-            lockedTiles = new Bitmap[4];
+            lockedTiles = new Bitmap[5];
             java.io.File folder = ctx.getExternalFilesDir(null);
             String[] names = {"smarttube_final.webp", "netflix_final.webp",
-                    "prime_final.webp", "spotify_final.webp"};
+                    "prime_final.webp", "spotify_final.webp", "apps_final.webp"};
             if (folder != null) {
                 for (int i = 0; i < names.length; i++) {
                     try {
@@ -395,7 +395,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.card.setTranslationY(focused ? -2f * d : 0f);
             h.card.setTranslationZ(focused ? 5f * d : 0f);
             int brand = position;
-            // These four assets ship with the installer, based on the locked 5-tile
+            // All five selected artworks ship with the installer, based on the locked 5-tile
             // design. Do NOT use installed apps' banners: those change with app updates.
             Bitmap lockedTile = lockedTile(ctx, brand);
             boolean fullArtwork = lockedTile != null;
