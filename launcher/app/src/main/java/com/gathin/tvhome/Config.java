@@ -176,7 +176,7 @@ final class Config {
         List<String> referenceDock = new ArrayList<>(Arrays.asList(
                 "com.google.android.youtube.tv",
                 "com.netflix.ninja",
-                "com.vuclip.viu.tv",
+                "com.amazon.amazonvideo.livingroom",
                 "com.spotify.tv.android"));
         for (String pkg : dock) if (!referenceDock.contains(pkg)) referenceDock.add(pkg);
         dock = referenceDock;
