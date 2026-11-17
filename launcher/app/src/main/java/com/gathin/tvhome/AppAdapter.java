@@ -14,6 +14,7 @@ import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
@@ -634,6 +635,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
             card.setOnFocusChangeListener((view, focused) -> {
                 float s = focused ? FOCUS_SCALE : 1.0f;
+                int cardIndex = getBindingAdapterPosition();
+                boolean dockFocus = focused && cardIndex >= 0 && cardIndex < 5;
+                // One focused card only gets a vivid magenta hardware shadow. Cheap on Android TV.
+                if (Build.VERSION.SDK_INT >= 28) {
+                    view.setOutlineAmbientShadowColor(0xDDF729B4);
+                    view.setOutlineSpotShadowColor(0xDDF729B4);
+                }
+                view.setElevation(dockFocus ? 10f * density : 0f);
                 view.animate().cancel();
                 name.animate().cancel();
                 if (reducedMotion) {
