@@ -38,6 +38,9 @@ final class PremiumGlassDrawable extends Drawable {
     private final Paint focusWash = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
     private float opacity = 1f;
+    // Selected full-card brand artwork is rendered by a lightweight ImageView underneath.
+    // In this mode only paint the animated focus, never another glass border on the logo image.
+    private boolean artworkOnlyFocus;
     /** A reused animator fades the magenta focus between cards instead of flashing instantly. */
     private final ValueAnimator focusFade;
     private float focusAmount;
@@ -92,6 +95,20 @@ final class PremiumGlassDrawable extends Drawable {
         float radius = Math.min(bounds.height() / 2f,
                 (dock ? 19f : 28f) * density);
         boolean focused = dock && focusAmount > .005f;
+        if (artworkOnlyFocus) {
+            if (focused) {
+                float inset = 1.2f * density;
+                inner.set(bounds);
+                inner.inset(inset, inset);
+                matrix.setScale(bounds.width(), bounds.height());
+                matrix.postTranslate(bounds.left, bounds.top);
+                focusRim.getShader().setLocalMatrix(matrix);
+                focusRim.setAlpha(Math.round(225f * opacity * focusAmount));
+                canvas.drawRoundRect(inner, Math.max(0f, radius - inset),
+                        Math.max(0f, radius - inset), focusRim);
+            }
+            return;
+        }
 
         // The native launcher already prepares a blurred wallpaper at half resolution on
         // background worker; use its exact screen-aligned texture instead of a fake flat fill.
@@ -136,6 +153,13 @@ final class PremiumGlassDrawable extends Drawable {
             focusRim.getShader().setLocalMatrix(matrix);
             focusRim.setAlpha(Math.round(255f * opacity * focusAmount));
             canvas.drawRoundRect(inner, focusRadius, focusRadius, focusRim);
+        }
+    }
+
+    void setArtworkOnlyFocus(boolean enabled) {
+        if (artworkOnlyFocus != enabled) {
+            artworkOnlyFocus = enabled;
+            invalidateSelf();
         }
     }
 
