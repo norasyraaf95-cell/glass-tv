@@ -5,6 +5,13 @@
     android:layout_height="match_parent"
     android:background="#FF000000">
 
+    <!-- Atmospheric motion runs behind content and is stopped when Home is paused. -->
+    <com.gathin.tvhome.WindyCloudView
+        android:id="@+id/cloudMotion"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- Ambient glow in the colour of the focused dock app. -->
     <View
         android:id="@+id/ambient"
@@ -241,6 +248,109 @@
                 android:scrollbars="none"
                 android:descendantFocusability="afterDescendants" />
         </com.gathin.tvhome.FadeTopFrame>
+    </LinearLayout>
+
+    <!-- The two small Shah Alam cards. Visible information is cached; no WebView or live blur.
+         Press OK on the weather card to toggle atmospheric cloud motion. -->
+    <LinearLayout
+        android:id="@+id/shahAlamCards"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="140dp"
+        android:layout_marginEnd="56dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <LinearLayout
+            android:id="@+id/customWeatherCard"
+            android:layout_width="190dp"
+            android:layout_height="90dp"
+            android:background="@drawable/custom_widget_glass"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:focusable="true"
+            android:clickable="true"
+            android:nextFocusDown="@id/grid"
+            android:contentDescription="Shah Alam weather. Press OK to toggle cloud motion.">
+
+            <TextView
+                android:id="@+id/customWeatherTemp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--°C"
+                android:textColor="#FFFFFFFF"
+                android:textSize="25sp"
+                android:fontFamily="@font/outfit"
+                android:fontVariationSettings="'wght' 700"
+                android:includeFontPadding="false" />
+
+            <TextView
+                android:id="@+id/customWeatherCondition"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Shah Alam"
+                android:textColor="#E0FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="@font/outfit"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/customCloudToggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="WINDY ON · OK to toggle"
+                android:textColor="#F2E9C9F3"
+                android:textSize="10sp"
+                android:fontFamily="@font/outfit"
+                android:singleLine="true" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/customPrayerCard"
+            android:layout_width="190dp"
+            android:layout_height="90dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/custom_widget_glass"
+            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:focusable="false">
+
+            <TextView
+                android:id="@+id/customPrayerName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Waktu Solat · Shah Alam"
+                android:textColor="#E8FBE5FF"
+                android:textSize="12sp"
+                android:fontFamily="@font/outfit"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/customPrayerTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Memuatkan jadual..."
+                android:textColor="#FFFFFFFF"
+                android:textSize="18sp"
+                android:fontFamily="@font/outfit"
+                android:fontVariationSettings="'wght' 650"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="JAKIM · Zon SGR01"
+                android:textColor="#B5FFFFFF"
+                android:textSize="10sp"
+                android:fontFamily="@font/outfit" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- The single floating glass highlight that springs between tiles. -->
