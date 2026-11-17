@@ -177,8 +177,7 @@ final class Config {
                 "com.google.android.youtube.tv",
                 "com.netflix.ninja",
                 "com.vuclip.viu.tv",
-                "in.startv.hotstar.dplus.tv",
-                "com.disney.disneyplus"));
+                "com.spotify.tv.android"));
         for (String pkg : dock) if (!referenceDock.contains(pkg)) referenceDock.add(pkg);
         dock = referenceDock;
         // A single fixed landscape is used behind the looping cloud video.
