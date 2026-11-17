@@ -171,9 +171,25 @@ final class Config {
         int cacheCleanDays = json != null ? integer(json, "cache_clean_days", CacheCleaner.DEFAULT_DAYS, 0, 90)
                 : CacheCleaner.DEFAULT_DAYS;
 
+        // Windy Clouds V2 preview uses four functional apps and an Apps drawer (fifth slot).
+        // Installed apps are ordered first; missing ones are not fabricated.
+        List<String> referenceDock = new ArrayList<>(Arrays.asList(
+                "com.google.android.youtube.tv",
+                "com.netflix.ninja",
+                "com.vuclip.viu.tv",
+                "in.startv.hotstar.dplus.tv",
+                "com.disney.disneyplus"));
+        for (String pkg : dock) if (!referenceDock.contains(pkg)) referenceDock.add(pkg);
+        dock = referenceDock;
+        // A single fixed landscape is used behind the looping cloud video.
+        // Avoid Glass TV's default weekly places swapping out the design.
+        places = false;
+        wallpapers.clear();
+        wallpaperIntervalMs = 0L;
+
         return new Config(dock, hidden, liveTv, liveTvAction, panelService, panelAction, inputAction,
-                Math.max(1, columns), Math.max(0, rowsBelow), shamsi, moduleCards, reducedMotion,
-                vpn, homeSettings, networkPill, liveTvRow, background, wallpaper, wallpapers, wallpaperIntervalMs,
+                5, 0, shamsi, false, true,
+                vpn, homeSettings, true, liveTvRow, background, wallpaper, wallpapers, wallpaperIntervalMs,
                 places, cacheCleanDays, applied);
     }
 
