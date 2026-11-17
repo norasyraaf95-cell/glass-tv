@@ -136,7 +136,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 try {
                     // One lightweight WebP contains exactly five approved tiles.
                     // Split it once on launch; do not decode during DPAD focus animation.
-                    java.io.File image = new java.io.File(folder, "locked_tiles_v73.webp");
+                    java.io.File image = new java.io.File(folder, "locked_tiles_v74.webp");
                     if (image.isFile() && image.length() < 131072) {
                         android.graphics.BitmapFactory.Options opts =
                                 new android.graphics.BitmapFactory.Options();
@@ -148,8 +148,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         if (sprite != null && sprite.getWidth() % 5 == 0) {
                             int width = sprite.getWidth() / 5;
                             int height = sprite.getHeight();
-                            // Trim only the built-in hard outer rim. Never change
-                            // the locked SmartTube, Netflix, Prime or Spotify logo.
+                            // Crop to the same visible rounded-card geometry as V7.3.
+                            // V7.4 artwork has no hard black corner/shadow in the source;
+                            // Prime Video and Spotify pixels remain identical to V7.3.
                             int trimX = Math.max(1, Math.round(width * .027f));
                             int trimY = Math.max(1, Math.round(height * .061f));
                             for (int i = 0; i < 5; i++) {
