@@ -71,8 +71,8 @@ final class ShahAlamWidgets {
                 activity.findViewById(R.id.prayerIsha)
         };
         activePrayer = new android.graphics.drawable.GradientDrawable();
-        activePrayer.setColor(0xB5CB268F);
-        activePrayer.setCornerRadius(11 * activity.getResources().getDisplayMetrics().density);
+        activePrayer.setColor(0xE9E82B99);
+        activePrayer.setCornerRadius(14 * activity.getResources().getDisplayMetrics().density);
         for (TextView slot : prayerSlots) {
             slot.setPadding(0, 5, 0, 5);
         }
