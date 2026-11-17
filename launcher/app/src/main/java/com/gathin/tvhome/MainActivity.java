@@ -258,6 +258,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sourcePanelAction = cfg.sourcePanelAction;
 
         root = findViewById(R.id.root);
+        // Custom premium frosted material uses wallpaper's existing half-resolution blur.
+        // No live blur on the moving video: Android 10 GPU / 1GB RAM safe.
+        for (int id : new int[]{R.id.customPrayerCard, R.id.customWeatherCard}) {
+            View card = findViewById(id);
+            card.setBackground(new PremiumGlassDrawable(card, false));
+            Backdrop.watch(card);
+            card.setElevation(2f * density);
+        }
         // Install alongside the old launcher: no system component or existing Home is changed.
         shahAlamWidgets = new ShahAlamWidgets(this);
         cloudMotion = findViewById(R.id.cloudMotion);
