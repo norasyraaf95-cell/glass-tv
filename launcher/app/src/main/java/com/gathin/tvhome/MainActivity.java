@@ -1481,7 +1481,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         java.text.SimpleDateFormat df = new java.text.SimpleDateFormat(
                 "EEEE   |   dd MMM yyyy", new Locale("ms", "MY"));
         df.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
-        line.setText(df.format(new java.util.Date()));
+        String value = df.format(new java.util.Date());
+        android.text.SpannableString styled = new android.text.SpannableString(value);
+        int dayEnd = value.indexOf("   |");
+        if (dayEnd > 0) {
+            styled.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                    0, dayEnd, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        line.setText(styled);
     }
 
     @Override
