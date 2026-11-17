@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <!-- Static transparency and border only; never runs an expensive live blur. -->
+    <gradient android:angle="0" android:startColor="#684B285F" android:endColor="#584E357A" />
+    <corners android:radius="22dp" />
+    <stroke android:width="1dp" android:color="#93F2C3F3" />
+    <padding android:left="14dp" android:top="9dp" android:right="14dp" android:bottom="9dp" />
+</shape>
