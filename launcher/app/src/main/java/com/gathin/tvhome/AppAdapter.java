@@ -136,7 +136,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 try {
                     // One lightweight WebP contains exactly five approved tiles.
                     // Split it once on launch; do not decode during DPAD focus animation.
-                    java.io.File image = new java.io.File(folder, "locked_tiles_v72.webp");
+                    java.io.File image = new java.io.File(folder, "locked_tiles_v73.webp");
                     if (image.isFile() && image.length() < 131072) {
                         android.graphics.BitmapFactory.Options opts =
                                 new android.graphics.BitmapFactory.Options();
@@ -399,7 +399,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.card.setScaleX(focused ? 1.055f : 1f);
             h.card.setScaleY(focused ? 1.055f : 1f);
             h.card.setTranslationY(focused ? -2f * d : 0f);
-            h.card.setTranslationZ(focused ? 5f * d : 0f);
+            h.card.setTranslationZ(0f);
             int brand = position;
             // All five selected artworks ship with the installer, based on the locked 5-tile
             // design. Do NOT use installed apps' banners: those change with app updates.
@@ -722,7 +722,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     view.setOutlineAmbientShadowColor(0xA8EC57BD);
                     view.setOutlineSpotShadowColor(0xA8EC57BD);
                 }
-                view.setElevation(2.5f * density);
+                view.setElevation(inDock ? 0f : 2.5f * density);
                 view.animate().cancel();
                 name.animate().cancel();
                 if (inDock) {
@@ -732,7 +732,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     view.animate()
                             .scaleX(scale).scaleY(scale)
                             .translationY(focused ? -2f * density : 0f)
-                            .translationZ(focused ? 5f * density : 0f)
+                            .translationZ(0f)
                             .setDuration(focused ? 215L : 165L)
                             .setInterpolator(focused ? DOCK_IN : DOCK_OUT)
                             .start();
