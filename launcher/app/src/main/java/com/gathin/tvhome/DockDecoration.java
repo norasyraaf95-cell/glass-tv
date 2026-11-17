@@ -71,27 +71,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             }
         }
         if (!any) return;
-        float pad = 14 * density;
-        rect.inset(-pad, -pad);
+        // Reference screenshot uses FIVE SEPARATE dark-glass app cards, not a large
+        // tray behind them. Preserve area geometry for focus coordination only.
         area.set(rect);
-        float radius = 26 * density;
-        blur.draw(c, parent, rect, radius, 1f);
-        c.drawRoundRect(rect, radius, radius, band);
-        // The focus frame of a dock tile sits on the tray's glass and under the tiles; the rest of
-        // the shape, outside the tray, is the glider itself showing behind.
-        if (glider != null && glider.isShowing()) {
-            parent.getLocationInWindow(at);
-            glider.getLocationInWindow(gliderAt);
-            c.save();
-            c.clipRect(rect);
-            glider.drawShape(c, gliderAt[0] - at[0], gliderAt[1] - at[1], parent);
-            c.restore();
-        }
-        // Drawn just inside the tray, as the pills draw theirs: a stroke centred on the boundary
-        // spreads over an extra pixel and reads thicker than the pills' edge.
-        float half = edge.paint.getStrokeWidth() / 2f;
-        rect.inset(half, half);
-        edge.fit(rect);
-        c.drawRoundRect(rect, radius - half, radius - half, edge.paint);
+
     }
 }
