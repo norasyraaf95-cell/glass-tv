@@ -70,9 +70,12 @@ final class ShahAlamWidgets {
                 activity.findViewById(R.id.prayerMaghrib),
                 activity.findViewById(R.id.prayerIsha)
         };
-        activePrayer = new android.graphics.drawable.GradientDrawable();
-        activePrayer.setColor(0xE9E82B99);
-        activePrayer.setCornerRadius(14 * activity.getResources().getDisplayMetrics().density);
+        float dp = activity.getResources().getDisplayMetrics().density;
+        activePrayer = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0xD9ED319F, 0xE9EA278D, 0xC3D7278A});
+        activePrayer.setCornerRadius(11 * dp);
+        activePrayer.setStroke(Math.max(1, Math.round(.8f * dp)), 0x93FFB2DF);
         for (TextView slot : prayerSlots) {
             slot.setPadding(0, 5, 0, 5);
         }
@@ -219,18 +222,23 @@ final class ShahAlamWidgets {
             }
             Calendar now = Calendar.getInstance(MY);
             int minute = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE);
-            int next = -1;
+            // Highlight the prayer period we're currently in, not an expired upcoming time.
+            // Before Subuh, focus Subuh as the next time; after Isyak, keep Isyak highlighted.
+            int current = -1;
+            int upcoming = -1;
             for (int i = 0; i < PRAYER_KEYS.length; i++) {
                 String time = shortTime(entry.optString(PRAYER_KEYS[i]));
                 if (time == null) continue;
                 prayerSlots[i].setText(PRAYER_LABELS[i] + "\n" + time);
                 int at = Integer.parseInt(time.substring(0, 2)) * 60
                         + Integer.parseInt(time.substring(3, 5));
-                if (next < 0 && minute < at) next = i;
+                if (minute >= at) current = i;
+                else if (upcoming < 0) upcoming = i;
             }
-            if (next >= 0) {
-                prayerSlots[next].setBackground(activePrayer);
-                prayerSlots[next].setTextColor(0xFFFFFFFF);
+            int selected = current >= 0 ? current : upcoming;
+            if (selected >= 0) {
+                prayerSlots[selected].setBackground(activePrayer);
+                prayerSlots[selected].setTextColor(0xFFFFFFFF);
             }
         } catch (Exception e) {
             prayerName.setText("Jadual belum ada");
