@@ -126,6 +126,25 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return tileHeightPx + Math.round(45 * density);
     }
 
+    private static Bitmap[] lockedTiles;
+    private static synchronized Bitmap lockedTile(Context ctx, int index) {
+        if (index < 0 || index > 3) return null;
+        if (lockedTiles == null) {
+            lockedTiles = new Bitmap[4];
+            try {
+                android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
+                opts.inPreferredConfig = Bitmap.Config.RGB_565;
+                Bitmap strip = android.graphics.BitmapFactory.decodeResource(
+                        ctx.getResources(), R.drawable.v72_strip, opts);
+                if (strip != null && strip.getWidth() >= 4) {
+                    int w = strip.getWidth() / 4;
+                    for (int i = 0; i < 4; i++) lockedTiles[i] =
+                            Bitmap.createBitmap(strip, i * w, 0, w, strip.getHeight());
+                }
+            } catch (RuntimeException ignored) {}
+        }
+        return lockedTiles[index];
+    }
     private final Context ctx;
     private final TileListener listener;
     private final int dockSize;
