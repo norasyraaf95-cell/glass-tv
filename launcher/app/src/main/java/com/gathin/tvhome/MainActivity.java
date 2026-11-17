@@ -264,12 +264,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         android.content.SharedPreferences custom = getSharedPreferences("custom_v1", MODE_PRIVATE);
         boolean windy = custom.getBoolean("windy_clouds", true);
         cloudMotion.setCloudsEnabled(windy);
-        customCloudToggle.setText(windy ? "WINDY ON · OK to toggle" : "WINDY OFF · OK to toggle");
+        customCloudToggle.setText(!cloudMotion.hasVideo() ? "WINDY VIDEO MISSING" : (windy ? "WINDY ON · OK to toggle" : "WINDY OFF · OK to toggle"));
         findViewById(R.id.customWeatherCard).setOnClickListener(v -> {
             boolean next = !custom.getBoolean("windy_clouds", true);
             custom.edit().putBoolean("windy_clouds", next).apply();
             cloudMotion.setCloudsEnabled(next);
-            customCloudToggle.setText(next ? "WINDY ON · OK to toggle" : "WINDY OFF · OK to toggle");
+            customCloudToggle.setText(!cloudMotion.hasVideo() ? "WINDY VIDEO MISSING" : (next ? "WINDY ON · OK to toggle" : "WINDY OFF · OK to toggle"));
         });
         // The tiles' entrance plays once per TV boot. Android reclaims the launcher during long stays
         // in big apps; starting again then is a return to Home, not a first launch.
