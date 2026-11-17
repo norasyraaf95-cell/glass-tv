@@ -366,6 +366,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
         if (inDock) {
             h.premiumGlass.syncFocus(focused);
+            h.card.setScaleX(focused ? 1.055f : 1f);
+            h.card.setScaleY(focused ? 1.055f : 1f);
+            h.card.setTranslationY(focused ? -2f * d : 0f);
+            h.card.setTranslationZ(focused ? 5f * d : 0f);
             h.card.setBackground(h.premiumGlass);
             h.banner.setImageDrawable(null);
             h.banner.setVisibility(View.GONE);
