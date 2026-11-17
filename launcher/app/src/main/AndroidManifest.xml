@@ -30,6 +30,8 @@
         </intent>
         <!-- China-market MIUI TV firmware: the Settings and Wi-Fi pills fall back to Xiaomi's settings app. -->
         <package android:name="com.xiaomi.mitv.settings" />
+        <!-- Explicit visibility for the user-installed YouTube replacement on Android 11+. -->
+        <package android:name="org.smarttube.stable" />
     </queries>
 
     <application
