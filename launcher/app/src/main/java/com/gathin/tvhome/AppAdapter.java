@@ -392,11 +392,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             int brand = position;
             // These four assets are embedded in drawable-nodpi, based on the locked 5-tile
             // design. Do NOT use installed apps' banners: those change with app updates.
-            int lockedTile = brand == 0 ? R.drawable.v72_smarttube
-                    : brand == 1 ? R.drawable.v72_netflix
-                    : brand == 2 ? R.drawable.v72_prime
-                    : brand == 3 ? R.drawable.v72_spotify : 0;
-            boolean fullArtwork = lockedTile != 0;
+            Bitmap lockedTile = lockedTile(ctx, brand);
+            boolean fullArtwork = lockedTile != null;
             h.premiumGlass.setArtworkOnlyFocus(fullArtwork);
             if (fullArtwork) {
                 // Artwork includes its own border; overlay only the animated focus line.
@@ -404,7 +401,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 h.card.setBackgroundColor(Color.TRANSPARENT);
                 h.card.setForeground(h.premiumGlass);
                 h.banner.setScaleType(ImageView.ScaleType.FIT_XY);
-                h.banner.setImageResource(lockedTile);
+                h.banner.setImageBitmap(lockedTile);
                 h.banner.setVisibility(View.VISIBLE);
             } else {
                 h.card.setForeground(null);
