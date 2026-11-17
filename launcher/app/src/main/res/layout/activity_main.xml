@@ -242,8 +242,15 @@
             android:gravity="center_vertical"
             android:focusable="false">
 
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_custom_mosque"
+                android:contentDescription="@null" />
+
             <LinearLayout
-                android:layout_width="104dp"
+                android:layout_width="96dp"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
                 <TextView
@@ -306,49 +313,63 @@
 
         <LinearLayout
             android:id="@+id/customWeatherCard"
-            android:layout_width="160dp"
+            android:layout_width="164dp"
             android:layout_height="65dp"
             android:layout_marginStart="14dp"
             android:background="@drawable/custom_widget_glass"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:gravity="center_vertical"
             android:focusable="true"
             android:clickable="true"
             android:nextFocusDown="@id/grid"
             android:contentDescription="Shah Alam weather. Press OK to toggle cloud motion.">
 
-            <TextView
-                android:id="@+id/customWeatherTemp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="--°C"
-                android:textColor="#FFFFFFFF"
-                android:textSize="22sp"
-                android:fontFamily="@font/outfit"
-                android:fontVariationSettings="'wght' 700"
-                android:includeFontPadding="false" />
+            <ImageView
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginEnd="7dp"
+                android:src="@drawable/ic_custom_weather"
+                android:contentDescription="@null" />
 
-            <TextView
-                android:id="@+id/customWeatherCondition"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Shah Alam"
-                android:textColor="#D6FFFFFF"
-                android:textSize="11sp"
-                android:fontFamily="@font/outfit"
-                android:singleLine="true"
-                android:ellipsize="end" />
+                android:orientation="vertical"
+                android:gravity="center_vertical">
+                <TextView
+                    android:id="@+id/customWeatherTemp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--°C"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="22sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 700"
+                    android:includeFontPadding="false" />
 
-            <TextView
-                android:id="@+id/customCloudToggle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="Windy ON"
-                android:textColor="#F7C5E8FF"
-                android:textSize="9sp"
-                android:fontFamily="@font/outfit"
-                android:singleLine="true" />
+                <TextView
+                    android:id="@+id/customWeatherCondition"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Shah Alam"
+                    android:textColor="#DEFFFFFF"
+                    android:textSize="10sp"
+                    android:fontFamily="@font/outfit"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/customCloudToggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:text="WINDY · ON"
+                    android:textColor="#FFDFB7EC"
+                    android:textSize="8sp"
+                    android:fontFamily="@font/outfit"
+                    android:singleLine="true" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 
