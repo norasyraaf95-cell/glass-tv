@@ -63,7 +63,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     }
 
     static final class Entry {
-        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, ALL_APPS = 3;
+        static final int APP = 0, HOME_SETTINGS = 1, CARD = 2, ALL_APPS = 3, SHORTCUT = 4;
 
         final int kind;
         final String label;
@@ -98,7 +98,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private static final OvershootInterpolator ZOOM_IN = new OvershootInterpolator(1.6f);
     private static final OvershootInterpolator ZOOM_OUT = new OvershootInterpolator(0f);
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
-    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 70f;
+    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 82f;
 
     /**
      * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
@@ -261,11 +261,39 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (ca != cb) return ca ? -1 : 1;
             return a.label.compareToIgnoreCase(b.label);
         });
-        // Functional fifth dock button: browse apps below the first row, no fake package.
-        fresh.add(Math.min(4, fresh.size()), new Entry(Entry.ALL_APPS, "Apps",
+        // Exact five-slot reference layout; never substitute another installed app for Disney+.
+        // A missing app displays a labelled shortcut that explains it is not installed.
+        String[] dockPackages = {"com.google.android.youtube.tv", "com.netflix.ninja",
+                "com.vuclip.viu.tv", "in.startv.hotstar.dplus.tv"};
+        String[] dockLabels = {"YouTube", "Netflix", "Viu", "Disney+"};
+        List<Entry> ordered = new ArrayList<>();
+        for (int i = 0; i < dockPackages.length; i++) {
+            Entry chosen = null;
+            for (Entry candidate : fresh) {
+                if (candidate.kind != Entry.APP) continue;
+                String pkg = candidate.pkg.toLowerCase(java.util.Locale.ROOT);
+                String name = candidate.label.toLowerCase(java.util.Locale.ROOT);
+                boolean match = candidate.pkg.equals(dockPackages[i]);
+                if (i == 0) match |= pkg.contains("youtube") && !pkg.contains("music");
+                if (i == 1) match |= pkg.contains("netflix");
+                if (i == 2) match |= pkg.contains("viu") || name.equals("viu for home");
+                if (i == 3) match |= pkg.contains("hotstar") || pkg.contains("disneyplus");
+                if (match) { chosen = candidate; break; }
+            }
+            if (chosen == null) {
+                chosen = new Entry(Entry.SHORTCUT, dockLabels[i],
+                        new ComponentName(dockPackages[i], "com.gathin.tvhome.MissingAppShortcut"),
+                        null, null, null, 0);
+            } else {
+                fresh.remove(chosen);
+            }
+            ordered.add(chosen);
+        }
+        ordered.add(new Entry(Entry.ALL_APPS, "Apps",
                 new ComponentName(ctx.getPackageName(), "com.gathin.tvhome.CustomAppsTile"),
                 null, ctx.getDrawable(R.drawable.ic_custom_apps), null, 0xFFE83BA8));
-
+        ordered.addAll(fresh);
+        fresh = ordered;
         // Optional "Default home" tile (config.xml), only when this TV actually has a home-screen picker.
         if (showHomeSettings
                 && pm.resolveActivity(new Intent(Settings.ACTION_HOME_SETTINGS), 0) != null) {
@@ -334,26 +362,33 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.card.setBackgroundResource(R.drawable.custom_dock_tile);
             h.banner.setImageDrawable(null);
             h.banner.setVisibility(View.GONE);
-            if (e.icon != null) {
-                h.icon.setImageDrawable(e.icon);
+            // Draw stable brand vector marks; installed app icon artwork varies by OS.
+            int brand = position;
+            int art = brand == 0 ? R.drawable.custom_logo_youtube
+                    : brand == 1 ? R.drawable.custom_logo_netflix
+                    : brand == 2 ? R.drawable.custom_logo_viu
+                    : brand == 4 ? R.drawable.ic_custom_apps : 0;
+            if (art != 0) {
+                h.icon.setImageResource(art);
                 h.icon.setVisibility(View.VISIBLE);
-                iconLp.width = Math.round(38 * d);
-                iconLp.height = Math.round(38 * d);
+                iconLp.width = Math.round(40 * d);
+                iconLp.height = Math.round(40 * d);
                 iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-                iconLp.leftMargin = Math.round(13 * d);
+                iconLp.leftMargin = Math.round(16 * d);
                 iconLp.bottomMargin = 0;
                 h.icon.setLayoutParams(iconLp);
-            } else {
-                h.icon.setVisibility(View.GONE);
-            }
+            } else h.icon.setVisibility(View.GONE);
             labelLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
             labelLp.gravity = Gravity.CENTER_VERTICAL;
             h.label.setLayoutParams(labelLp);
-            h.label.setText(e.label);
-            h.label.setTextSize(14f);
-            h.label.setGravity(Gravity.CENTER_VERTICAL | (e.icon != null ? Gravity.START : Gravity.CENTER));
-            h.label.setPadding(e.icon != null ? Math.round(58 * d) : Math.round(6 * d),
-                    0, Math.round(5 * d), 0);
+            h.label.setText(brand == 0 ? "YouTube" : brand == 1 ? "Netflix"
+                    : brand == 2 ? "Viu" : brand == 3 ? "Disney+" : "Apps");
+            h.label.setTextSize(brand == 3 ? 22f : 18f);
+            h.label.setTypeface(android.graphics.Typeface.create(
+                    brand == 3 ? "sans-serif-medium" : "sans-serif",
+                    brand == 3 ? android.graphics.Typeface.ITALIC : android.graphics.Typeface.BOLD));
+            h.label.setGravity(brand == 3 ? Gravity.CENTER : Gravity.CENTER_VERTICAL | Gravity.START);
+            h.label.setPadding(brand == 3 ? 0 : Math.round(60 * d), 0, Math.round(6 * d), 0);
             h.label.setVisibility(View.VISIBLE);
         } else {
             h.card.setBackgroundResource(R.drawable.tile_bg);
@@ -427,7 +462,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     boolean canMove(int position) {
         return position >= 0 && position < items.size()
                 && items.get(position).kind != Entry.HOME_SETTINGS
-                && items.get(position).kind != Entry.ALL_APPS;
+                && items.get(position).kind != Entry.ALL_APPS
+                && items.get(position).kind != Entry.SHORTCUT;
     }
 
     /** The last position a moved tile can take: before the Default home tile, which stays last. */
@@ -461,6 +497,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            return;
+        }
+        if (e.kind == Entry.SHORTCUT) {
+            Toast.makeText(ctx, e.label + " belum dipasang pada TV ini", Toast.LENGTH_LONG).show();
             return;
         }
         Intent i = new Intent(Intent.ACTION_MAIN)
