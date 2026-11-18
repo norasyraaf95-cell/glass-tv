@@ -126,42 +126,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return tileHeightPx + Math.round(45 * density);
     }
 
-    private static Bitmap[] lockedTiles;
-    private static synchronized Bitmap lockedTile(Context ctx, int index) {
-        if (index < 0 || index > 4) return null;
-        if (lockedTiles == null) {
-            lockedTiles = new Bitmap[5];
-            java.io.File folder = ctx.getExternalFilesDir(null);
-            if (folder != null) {
-                try {
-                    // One lightweight WebP contains exactly five approved tiles.
-                    // Split it once on launch; do not decode during DPAD focus animation.
-                    java.io.File image = new java.io.File(folder, "locked_tiles_v75.webp");
-                    if (image.isFile() && image.length() < 262144) {
-                        android.graphics.BitmapFactory.Options opts =
-                                new android.graphics.BitmapFactory.Options();
-                        // Avoid RGB_565 colour banding on the five small gradients.
-                        opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
-                        opts.inDither = true;
-                        Bitmap sprite = android.graphics.BitmapFactory.decodeFile(
-                                image.getAbsolutePath(), opts);
-                        if (sprite != null && sprite.getWidth() % 5 == 0) {
-                            int width = sprite.getWidth() / 5;
-                            int height = sprite.getHeight();
-                            // V7.5 artwork is already transparent and antialiased to the
-                            // exact card silhouette. Cropping the edges created black seams.
-                            for (int i = 0; i < 5; i++) {
-                                lockedTiles[i] = Bitmap.createBitmap(sprite,
-                                        i * width, 0, width, height);
-                            }
-                        }
-                    }
-                } catch (RuntimeException ignored) {}
-            }
-        }
-        return lockedTiles[index];
-    }
-    private final Context ctx;
+    // V7.7 does not decode the V7.5 300px-per-card WebP atlas.
+    // The dock is always native glass + vector + TextView, at all display densities.
+
     private final TileListener listener;
     private final int dockSize;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
