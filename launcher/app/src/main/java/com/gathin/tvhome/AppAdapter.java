@@ -126,41 +126,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return tileHeightPx + Math.round(45 * density);
     }
 
-    private static Bitmap[] lockedTiles;
-    private static synchronized Bitmap lockedTile(Context ctx, int index) {
-        if (index < 0 || index > 4) return null;
-        if (lockedTiles == null) {
-            lockedTiles = new Bitmap[5];
-            java.io.File folder = ctx.getExternalFilesDir(null);
-            if (folder != null) {
-                try {
-                    // One lightweight WebP contains exactly five approved tiles.
-                    // Split it once on launch; do not decode during DPAD focus animation.
-                    java.io.File image = new java.io.File(folder, "locked_tiles_v75.webp");
-                    if (image.isFile() && image.length() < 262144) {
-                        android.graphics.BitmapFactory.Options opts =
-                                new android.graphics.BitmapFactory.Options();
-                        // Avoid RGB_565 colour banding on the five small gradients.
-                        opts.inPreferredConfig = Bitmap.Config.ARGB_8888;
-                        opts.inDither = true;
-                        Bitmap sprite = android.graphics.BitmapFactory.decodeFile(
-                                image.getAbsolutePath(), opts);
-                        if (sprite != null && sprite.getWidth() % 5 == 0) {
-                            int width = sprite.getWidth() / 5;
-                            int height = sprite.getHeight();
-                            // V7.5 artwork is already transparent and antialiased to the
-                            // exact card silhouette. Cropping the edges created black seams.
-                            for (int i = 0; i < 5; i++) {
-                                lockedTiles[i] = Bitmap.createBitmap(sprite,
-                                        i * width, 0, width, height);
-                            }
-                        }
-                    }
-                } catch (RuntimeException ignored) {}
-            }
-        }
-        return lockedTiles[index];
-    }
+    // V7.7 does not decode the V7.5 300px-per-card WebP atlas.
+    // The dock is always native glass + vector + TextView, at all display densities.
+
     private final Context ctx;
     private final TileListener listener;
     private final int dockSize;
@@ -391,8 +359,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.name.setVisibility(position < dockSize ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : 0f);
-        h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
-        h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
+        h.card.setScaleX(position < dockSize ? 1f : focused ? FOCUS_SCALE : 1f);
+        h.card.setScaleY(position < dockSize ? 1f : focused ? FOCUS_SCALE : 1f);
         // Compact cinematic dock on the Custom V1 branch, with a static translucent fill and
         // focus pink border. The full app grid still uses ordinary banners.
         boolean inDock = position < dockSize;
@@ -400,62 +368,76 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
         FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
         if (inDock) {
-            h.premiumGlass.syncFocus(focused);
-            h.card.setScaleX(focused ? 1.04f : 1f);
-            h.card.setScaleY(focused ? 1.04f : 1f);
-            h.card.setTranslationY(focused ? -2f * d : 0f);
+            // Native glass, icon and wordmark are separate layers. No WebP tile
+            // stretches during focus; this fixes the blur seen on V7.5 and the
+            // flat/lavender fill and oval glow seen on V7.6.
+            h.dockGlass.setBrand(position);
+            h.dockGlass.syncFocus(focused);
+            h.card.setBackground(h.dockGlass);
+            h.card.setForeground(null);
+            h.card.setScaleX(1f);
+            h.card.setScaleY(1f);
+            h.card.setTranslationY(0f);
             h.card.setTranslationZ(0f);
-            int brand = position;
-            // All five selected artworks ship with the installer, based on the locked 5-tile
-            // design. Do NOT use installed apps' banners: those change with app updates.
-            Bitmap lockedTile = lockedTile(ctx, brand);
-            boolean fullArtwork = lockedTile != null;
-            h.premiumGlass.setArtworkOnlyFocus(fullArtwork);
-            if (fullArtwork) {
-                // Artwork includes its own border; overlay only the animated focus line.
-                // This avoids doubled white/pink borders on the corners.
-                h.card.setBackgroundColor(Color.TRANSPARENT);
-                h.card.setForeground(h.premiumGlass);
-                h.banner.setScaleType(ImageView.ScaleType.FIT_XY);
-                h.banner.setImageBitmap(lockedTile);
-                h.banner.setVisibility(View.VISIBLE);
-            } else {
-                h.card.setForeground(null);
-                h.card.setBackground(h.premiumGlass);
-                h.banner.setImageDrawable(null);
-                h.banner.setVisibility(View.GONE);
-            }
-            // Keep vectors as a fallback for other screens, but not on branded cards.
-            int art = brand == 0 ? R.drawable.custom_logo_youtube
-                    : brand == 1 ? R.drawable.custom_logo_netflix
-                    : brand == 2 ? R.drawable.custom_logo_prime
-                    : brand == 3 ? R.drawable.custom_logo_spotify
-                    : brand == 4 ? R.drawable.ic_custom_apps : 0;
-            if (!fullArtwork && art != 0) {
-                h.icon.setImageResource(art);
-                h.icon.setVisibility(View.VISIBLE);
-                iconLp.width = Math.round(40 * d);
-                iconLp.height = Math.round(40 * d);
-                iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-                iconLp.leftMargin = Math.round(16 * d);
-                iconLp.bottomMargin = 0;
-                h.icon.setLayoutParams(iconLp);
-            } else h.icon.setVisibility(View.GONE);
+            h.banner.setImageDrawable(null);
+            h.banner.setVisibility(View.GONE);
+
+            int art = position == 0 ? R.drawable.custom_logo_youtube
+                    : position == 1 ? R.drawable.custom_logo_netflix
+                    : position == 2 ? R.drawable.custom_logo_prime
+                    : position == 3 ? R.drawable.custom_logo_spotify
+                    : R.drawable.ic_custom_apps;
+            // Scale icons and typography with narrow 5-column Android TV docks
+            // so labels never clip when the device density is unusual.
+            float unit = Math.min(1f,
+                    h.card.getLayoutParams().width / (180f * d));
+            float size = d * unit;
+            h.icon.setImageResource(art);
+            h.icon.setVisibility(View.VISIBLE);
+            h.icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            h.label.setVisibility(View.VISIBLE);
+            h.label.setTypeface(android.graphics.Typeface.create(
+                    "sans-serif-medium", android.graphics.Typeface.BOLD));
+            h.label.setTextColor(Color.WHITE);
+            h.label.setSingleLine(true);
+            h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
+            h.label.setCompoundDrawablePadding(0);
             labelLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
             labelLp.gravity = Gravity.CENTER_VERTICAL;
             h.label.setLayoutParams(labelLp);
-            h.label.setText(brand == 0 ? "YouTube" : brand == 1 ? "Netflix"
-                    : brand == 2 ? "Prime Video" : brand == 3 ? "Spotify" : "Apps");
-            h.label.setTextSize(brand == 2 ? 15f : 17f);
-            h.label.setTypeface(android.graphics.Typeface.create(
-                    "sans-serif-medium", android.graphics.Typeface.NORMAL));
-            h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
-            h.label.setCompoundDrawablePadding(0);
-            h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-            h.label.setPadding(Math.round(60 * d), 0, Math.round(6 * d), 0);
-            h.label.setVisibility(fullArtwork ? View.GONE : View.VISIBLE);
+
+            if (position == 2) {
+                // Prime Video only: white native wordmark, cyan vector smile.
+                h.label.setText("prime video");
+                h.label.setTextSize(19f * unit);
+                h.label.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+                h.label.setPadding(0, Math.round(19f * size), 0, 0);
+                iconLp.width = Math.round(68f * size);
+                iconLp.height = Math.round(26f * size);
+                iconLp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                iconLp.leftMargin = 0;
+                iconLp.bottomMargin = Math.round(13f * size);
+            } else {
+                h.label.setText(position == 0 ? "YouTube" : position == 1
+                        ? "Netflix" : position == 3 ? "Spotify" : "Apps");
+                h.label.setTextSize((position == 4 ? 17f : 18f) * unit);
+                h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+                int labelStart = position == 0 ? 80 : position == 1 ? 69
+                        : position == 3 ? 69 : 78;
+                h.label.setPadding(Math.round(labelStart * size), 0,
+                        Math.round(5f * size), 0);
+
+                iconLp.width = Math.round((position == 0 ? 52f : position == 1
+                        ? 32f : position == 3 ? 41f : 38f) * size);
+                iconLp.height = Math.round((position == 0 ? 39f : position == 1
+                        ? 43f : position == 3 ? 41f : 38f) * size);
+                iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+                iconLp.leftMargin = Math.round((position == 0 ? 18f : position == 1
+                        ? 25f : position == 3 ? 18f : 25f) * size);
+                iconLp.bottomMargin = 0;
+            }
+            h.icon.setLayoutParams(iconLp);
         } else {
-            h.premiumGlass.setArtworkOnlyFocus(false);
             h.card.setForeground(null);
             h.card.setBackgroundResource(R.drawable.tile_bg);
             iconLp.width = Math.round(48 * d);
@@ -514,7 +496,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     public void onViewRecycled(@NonNull Holder h) {
         h.card.animate().cancel();
         h.name.animate().cancel();
-        h.premiumGlass.stopFocus();
+        h.dockGlass.stopFocus();
         h.card.setTranslationY(0f);
         h.card.setTranslationZ(0f);
         h.card.setScaleX(1f);
@@ -695,7 +677,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     static final class Holder extends RecyclerView.ViewHolder {
         final View card;
-        final PremiumGlassDrawable premiumGlass;
+        final LiquidCrystalDockDrawable dockGlass;
         final ImageView banner;
         final ImageView icon;
         final TextView label;
@@ -705,7 +687,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         Holder(View v, TileListener listener, boolean reducedMotion) {
             super(v);
             card = v.findViewById(R.id.card);
-            premiumGlass = new PremiumGlassDrawable(card, true);
+            dockGlass = new LiquidCrystalDockDrawable(card);
             Backdrop.watch(card);
             banner = v.findViewById(R.id.banner);
             icon = v.findViewById(R.id.icon);
@@ -740,7 +722,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             card.setOnFocusChangeListener((view, focused) -> {
                 int cardIndex = getBindingAdapterPosition();
                 boolean inDock = cardIndex >= 0 && cardIndex < 5;
-                float scale = focused ? (inDock ? 1.04f : FOCUS_SCALE) : 1f;
+                float scale = focused && !inDock ? FOCUS_SCALE : 1f;
                 if (Build.VERSION.SDK_INT >= 28) {
                     view.setOutlineAmbientShadowColor(0xA8EC57BD);
                     view.setOutlineSpotShadowColor(0xA8EC57BD);
@@ -749,16 +731,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 view.animate().cancel();
                 name.animate().cancel();
                 if (inDock) {
-                    // One property animation, one reused highlight animator; no bounce or
-                    // live blur. Every keypress smoothly retargets from the current values.
-                    premiumGlass.animateFocus(focused);
-                    view.animate()
-                            .scaleX(scale).scaleY(scale)
-                            .translationY(focused ? -2f * density : 0f)
-                            .translationZ(0f)
-                            .setDuration(focused ? 195L : 160L)
-                            .setInterpolator(focused ? DOCK_IN : DOCK_OUT)
-                            .start();
+                    // V7.7: the only DPAD animation is the 240ms light alpha
+                    // handoff. The icon, text, card bounds and static glass
+                    // never animate. Fast key presses start from the current light.
+                    dockGlass.animateFocus(focused);
+                    view.setScaleX(1f);
+                    view.setScaleY(1f);
+                    view.setTranslationY(0f);
+                    view.setTranslationZ(0f);
                     name.setAlpha(0f); // dock names are not displayed under the tiles
                 } else if (reducedMotion) {
                     view.animate().scaleX(scale).scaleY(scale)

@@ -44,7 +44,7 @@ final class ShahAlamWidgets {
     private final TextView[] prayerSlots;
     private final android.graphics.drawable.GradientDrawable activePrayer;
     private static final String[] PRAYER_KEYS = {"fajr", "dhuhr", "asr", "maghrib", "isha"};
-    private static final String[] PRAYER_LABELS = {"Subuh", "Zohor", "Asar", "Maghrib", "Isyak"};
+    private static final String[] PRAYER_LABELS = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
     private boolean active;
     private boolean destroyed;
 
@@ -189,7 +189,7 @@ final class ShahAlamWidgets {
             condition.setText("Cuaca belum tersedia");
         }
 
-        prayerName.setText("Waktu Solat");
+        prayerName.setText("Prayer Times");
         prayerTime.setText("");
         for (int i = 0; i < prayerSlots.length; i++) {
             prayerSlots[i].setText(PRAYER_LABELS[i] + "\n--:--");
@@ -199,12 +199,12 @@ final class ShahAlamWidgets {
         try {
             String month = format("yyyy-MM", new Date());
             if (!month.equals(cache.getString("prayer_month", ""))) {
-                prayerName.setText("Jadual belum ada");
+                prayerName.setText("Schedule unavailable");
                 return;
             }
             JSONArray times = new JSONObject(cache.getString("prayer_json", "{}")).optJSONArray("prayerTime");
             if (times == null) {
-                prayerName.setText("Jadual belum ada");
+                prayerName.setText("Schedule unavailable");
                 return;
             }
             String date = format("dd-MMM-yyyy", new Date());
@@ -217,7 +217,7 @@ final class ShahAlamWidgets {
                 }
             }
             if (entry == null) {
-                prayerName.setText("Jadual belum ada");
+                prayerName.setText("Schedule unavailable");
                 return;
             }
             Calendar now = Calendar.getInstance(MY);
@@ -241,7 +241,7 @@ final class ShahAlamWidgets {
                 prayerSlots[selected].setTextColor(0xFFFFFFFF);
             }
         } catch (Exception e) {
-            prayerName.setText("Jadual belum ada");
+            prayerName.setText("Schedule unavailable");
         }
     }
 
@@ -260,12 +260,12 @@ final class ShahAlamWidgets {
     }
 
     private static String weatherDescription(int code) {
-        if (code == 0) return "Cerah · Shah Alam";
-        if (code <= 3 && code > 0) return "Berawan · Shah Alam";
-        if (code == 45 || code == 48) return "Berkabus · Shah Alam";
+        if (code == 0) return "Clear · Shah Alam";
+        if (code <= 3 && code > 0) return "Cloudy · Shah Alam";
+        if (code == 45 || code == 48) return "Foggy · Shah Alam";
         if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82))
-            return "Hujan · Shah Alam";
-        if (code >= 95) return "Ribut · Shah Alam";
+            return "Rain · Shah Alam";
+        if (code >= 95) return "Storm · Shah Alam";
         return "Shah Alam";
     }
 }

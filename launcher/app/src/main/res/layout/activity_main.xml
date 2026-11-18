@@ -117,7 +117,7 @@
                         android:id="@+id/date"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Selasa  |  18 Nov 2026"
+                        android:text="Wednesday  |  18 Nov 2026"
                         android:textColor="#ECFFFFFF"
                         android:textSize="16sp"
                         android:fontFamily="@font/outfit"
@@ -263,7 +263,7 @@
                     android:id="@+id/customPrayerName"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Waktu Solat"
+                    android:text="Prayer Times"
                     android:textColor="#FFFFFFFF"
                     android:textSize="14sp"
                     android:fontFamily="@font/outfit"
@@ -295,7 +295,7 @@
                 android:gravity="center_vertical"
                 android:baselineAligned="false">
                 <TextView android:id="@+id/prayerFajr" android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:gravity="center" android:text="Subuh&#10;--:--"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Fajr&#10;--:--"
                     android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
@@ -304,7 +304,7 @@
                     android:background="#75FFFFFF"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerDhuhr" android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:gravity="center" android:text="Zohor&#10;--:--"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Dhuhr&#10;--:--"
                     android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
@@ -313,7 +313,7 @@
                     android:background="#75FFFFFF"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerAsr" android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:gravity="center" android:text="Asar&#10;--:--"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Asr&#10;--:--"
                     android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
@@ -331,7 +331,7 @@
                     android:background="#75FFFFFF"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerIsha" android:layout_width="0dp" android:layout_weight="1"
-                    android:layout_height="wrap_content" android:gravity="center" android:text="Isyak&#10;--:--"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Isha&#10;--:--"
                     android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
             </LinearLayout>

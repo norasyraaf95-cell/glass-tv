@@ -1,6 +1,8 @@
 package com.gathin.tvhome;
 
 import android.graphics.Canvas;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -18,6 +20,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final int dockSize;
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** A fixed, non-animated optical rail under all 5 cards (part of approved static reference). */
+    private final Paint staticRail = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint diffuseUnderRail = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final GlassRim edge;
     private Glider glider;
     private final int[] at = new int[2], gliderAt = new int[2];
@@ -75,5 +80,24 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         // tray behind them. Preserve area geometry for focus coordination only.
         area.set(rect);
 
+        // This is STATIONARY decorative illumination, not a focus indicator.
+        // It never changes position/width when the remote is pressed; unlike
+        // previous mockup videos, there is no light travelling between apps.
+        float lineY = rect.bottom + 4f * density;
+        float left = rect.left + 9f * density;
+        float right = rect.right - 9f * density;
+        if (right > left) {
+            staticRail.setShader(new LinearGradient(left, lineY, right, lineY,
+                    new int[]{0x00E5A4FF, 0xAFCB7DFF, 0xD68E94FA, 0x9BF4A7FF, 0x00E5A4FF},
+                    new float[]{0f, .24f, .52f, .78f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRoundRect(left, lineY, right, lineY + 1.5f * density,
+                    1f * density, 1f * density, staticRail);
+
+            diffuseUnderRail.setShader(new LinearGradient(0f, lineY, 0f, lineY + 21f*density,
+                    new int[]{0x39C48CE7, 0x13AF6BDA, 0x00AD73D8},
+                    new float[]{0f, .5f, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(left, lineY + 1.5f*density, right,
+                    lineY + 21f*density, diffuseUnderRail);
+        }
     }
 }
