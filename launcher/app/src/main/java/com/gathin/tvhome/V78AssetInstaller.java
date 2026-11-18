@@ -19,9 +19,10 @@ import java.util.zip.ZipInputStream;
  * The supplied asset ZIP is moved there once via Bugjaeger, then safely unpacked.
  */
 final class V78AssetInstaller {
-    static final String ARCHIVE = "v78_asset_pack.zip";
+    static final String ARCHIVE = "v781_asset_pack.zip";
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(
             "liquid_dock_base.webp", "liquid_dock_focused.webp",
+            "liquid_focus_illumination.webp", "liquid_focus_reflection.webp",
             "liquid_focus_glow.webp", "liquid_static_reflections.webp",
             "wallpaper.jpg", "config.json"));
     private V78AssetInstaller() {}
@@ -30,9 +31,11 @@ final class V78AssetInstaller {
         File dir = context.getExternalFilesDir(null);
         if (dir == null) return false;
         File pack = new File(dir, ARCHIVE);
-        if (!pack.isFile()) return new File(dir, "liquid_dock_base.webp").isFile();
-        File marker = new File(dir, ".v78_artwork_installed");
-        if (marker.isFile() && new File(dir, "liquid_dock_focused.webp").isFile())
+        if (!pack.isFile()) return new File(dir, "liquid_dock_base.webp").isFile()
+                && new File(dir, "liquid_focus_illumination.webp").isFile()
+                && new File(dir, "liquid_focus_reflection.webp").isFile();
+        File marker = new File(dir, ".v781_artwork_installed");
+        if (marker.isFile() && new File(dir, "liquid_focus_illumination.webp").isFile())
             return true;
         int count = 0;
         long total = 0;
@@ -70,7 +73,8 @@ final class V78AssetInstaller {
                 zip.closeEntry();
             }
             if (new File(dir, "liquid_dock_base.webp").isFile()
-                    && new File(dir, "liquid_dock_focused.webp").isFile()
+                    && new File(dir, "liquid_focus_illumination.webp").isFile()
+                    && new File(dir, "liquid_focus_reflection.webp").isFile()
                     && new File(dir, "liquid_focus_glow.webp").isFile()
                     && new File(dir, "liquid_static_reflections.webp").isFile())
                 marker.createNewFile();
@@ -78,6 +82,8 @@ final class V78AssetInstaller {
         } catch (Exception error) {
             Log.e("GlassTV.V78", "Asset pack is invalid", error);
         }
-        return new File(dir, "liquid_dock_base.webp").isFile();
+        return new File(dir, "liquid_dock_base.webp").isFile()
+                && new File(dir, "liquid_focus_illumination.webp").isFile()
+                && new File(dir, "liquid_focus_reflection.webp").isFile();
     }
 }
