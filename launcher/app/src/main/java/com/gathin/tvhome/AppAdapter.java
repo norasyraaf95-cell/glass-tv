@@ -344,6 +344,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         cardLp.width = w;
         cardLp.height = h;
         card.setLayoutParams(cardLp);
+        // Pre-rendered glow texture extends beyond the card's fixed glass outline.
+        // It does not move, resize or change shape during DPAD focus handoff.
+        ImageView halo = v.findViewById(R.id.focusHalo);
+        FrameLayout.LayoutParams haloLp = (FrameLayout.LayoutParams) halo.getLayoutParams();
+        haloLp.width = w + Math.round(24 * density);
+        haloLp.height = h + Math.round(30 * density);
+        halo.setLayoutParams(haloLp);
         View name = v.findViewById(R.id.name);
         ViewGroup.MarginLayoutParams nameLp = (ViewGroup.MarginLayoutParams) name.getLayoutParams();
         nameLp.width = w;
@@ -368,6 +375,33 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
         FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
         if (inDock) {
+            DockArtwork pack = DockArtwork.get(ctx);
+            if (pack.valid) {
+                // EXACT user-approved pre-rendered glass and wordmarks, not shader
+                // approximations. Both bitmaps remain stationary, only alpha crossfades.
+                h.dockGlass.stopFocus();
+                h.card.setForeground(null);
+                h.card.setBackgroundColor(Color.TRANSPARENT);
+                h.card.setScaleX(1f);
+                h.card.setScaleY(1f);
+                h.card.setTranslationY(0f);
+                h.card.setTranslationZ(0f);
+                h.card.setElevation(0f);
+                h.banner.setScaleType(ImageView.ScaleType.FIT_XY);
+                h.banner.setImageBitmap(pack.idle[position]);
+                h.banner.setVisibility(View.VISIBLE);
+                h.focusedArtwork.animate().cancel();
+                h.focusedArtwork.setImageBitmap(pack.focus[position]);
+                h.focusedArtwork.setVisibility(View.VISIBLE);
+                h.focusedArtwork.setAlpha(focused ? 1f : 0f);
+                h.focusHalo.animate().cancel();
+                h.focusHalo.setImageBitmap(pack.focusHalo);
+                h.focusHalo.setVisibility(View.VISIBLE);
+                h.focusHalo.setAlpha(focused ? .92f : 0f);
+                h.icon.setVisibility(View.GONE);
+                h.label.setVisibility(View.GONE);
+            } else {
+            // Fallback to V7.7 native material if asset ZIP was not installed yet.
             // Native glass, icon and wordmark are separate layers. No WebP tile
             // stretches during focus; this fixes the blur seen on V7.5 and the
             // flat/lavender fill and oval glow seen on V7.6.
@@ -437,7 +471,16 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 iconLp.bottomMargin = 0;
             }
             h.icon.setLayoutParams(iconLp);
+            }
         } else {
+            h.focusedArtwork.animate().cancel();
+            h.focusedArtwork.setVisibility(View.GONE);
+            h.focusedArtwork.setImageDrawable(null);
+            h.focusedArtwork.setAlpha(0f);
+            h.focusHalo.animate().cancel();
+            h.focusHalo.setVisibility(View.GONE);
+            h.focusHalo.setImageDrawable(null);
+            h.focusHalo.setAlpha(0f);
             h.card.setForeground(null);
             h.card.setBackgroundResource(R.drawable.tile_bg);
             iconLp.width = Math.round(48 * d);
@@ -496,6 +539,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     public void onViewRecycled(@NonNull Holder h) {
         h.card.animate().cancel();
         h.name.animate().cancel();
+        h.focusedArtwork.animate().cancel();
+        h.focusHalo.animate().cancel();
+        h.focusedArtwork.setAlpha(0f);
+        h.focusHalo.setAlpha(0f);
         h.dockGlass.stopFocus();
         h.card.setTranslationY(0f);
         h.card.setTranslationZ(0f);
@@ -679,6 +726,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         final View card;
         final LiquidCrystalDockDrawable dockGlass;
         final ImageView banner;
+        final ImageView focusedArtwork;
+        final ImageView focusHalo;
         final ImageView icon;
         final TextView label;
         final TextView name;
@@ -690,6 +739,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             dockGlass = new LiquidCrystalDockDrawable(card);
             Backdrop.watch(card);
             banner = v.findViewById(R.id.banner);
+            focusedArtwork = v.findViewById(R.id.focusedArtwork);
+            focusHalo = v.findViewById(R.id.focusHalo);
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);
             name = v.findViewById(R.id.name);
@@ -734,7 +785,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     // V7.7: the only DPAD animation is the 240ms light alpha
                     // handoff. The icon, text, card bounds and static glass
                     // never animate. Fast key presses start from the current light.
-                    dockGlass.animateFocus(focused);
+                    if (DockArtwork.get(view.getContext()).valid) {
+                        // In-place SOFT LIGHT HANDOFF: independently fade old focus out
+                        // and new focus in, both from their CURRENT alpha on rapid taps.
+                        focusedArtwork.animate().cancel();
+                        focusedArtwork.animate().alpha(focused ? 1f : 0f)
+                                .setDuration(240L).setInterpolator(DOCK_IN).start();
+                        focusHalo.animate().cancel();
+                        focusHalo.animate().alpha(focused ? .92f : 0f)
+                                .setDuration(240L).setInterpolator(DOCK_IN).start();
+                    } else {
+                        dockGlass.animateFocus(focused);
+                    }
                     view.setScaleX(1f);
                     view.setScaleY(1f);
                     view.setTranslationY(0f);
