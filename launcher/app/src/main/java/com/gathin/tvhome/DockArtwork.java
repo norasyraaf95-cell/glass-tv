@@ -18,21 +18,25 @@ final class DockArtwork {
     final Bitmap[] focus = new Bitmap[5];
     final Bitmap focusHalo;
     final Bitmap reflections;
+    final Bitmap[] activeReflections = new Bitmap[5];
     final boolean valid;
 
     private DockArtwork(Context context) {
         File dir = context.getExternalFilesDir(null);
         Bitmap idleAtlas = decode(dir, "liquid_dock_base.webp");
-        Bitmap focusAtlas = decode(dir, "liquid_dock_focused.webp");
+        Bitmap focusAtlas = decode(dir, "liquid_focus_illumination.webp");
+        Bitmap activeReflectionAtlas = decode(dir, "liquid_focus_reflection.webp");
         focusHalo = decode(dir, "liquid_focus_glow.webp");
         reflections = decode(dir, "liquid_static_reflections.webp");
         boolean all = idleAtlas != null && focusAtlas != null
-                && focusHalo != null && reflections != null;
+                && focusHalo != null && reflections != null && activeReflectionAtlas != null;
         if (all && idleAtlas.getWidth() == 1500 && idleAtlas.getHeight() == 156
-                && focusAtlas.getWidth() == 1500 && focusAtlas.getHeight() == 156) {
+                && focusAtlas.getWidth() == 1500 && focusAtlas.getHeight() == 156
+                && activeReflectionAtlas.getWidth() == 1500 && activeReflectionAtlas.getHeight() == 94) {
             for (int i = 0; i < 5; i++) {
                 idle[i] = Bitmap.createBitmap(idleAtlas, i * 300, 0, 300, 156);
                 focus[i] = Bitmap.createBitmap(focusAtlas, i * 300, 0, 300, 156);
+                activeReflections[i] = Bitmap.createBitmap(activeReflectionAtlas, i * 300, 0, 300, 94);
             }
             valid = true;
         } else {
