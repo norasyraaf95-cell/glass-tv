@@ -280,7 +280,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // No live blur on the moving video: Android 10 GPU / 1GB RAM safe.
         for (int id : new int[]{R.id.customPrayerCard, R.id.customWeatherCard}) {
             View card = findViewById(id);
-            card.setBackground(new PremiumGlassDrawable(card, false));
+            // Floating Prism background only: all native prayer/weather TextViews,
+            // data refresh and touch/focus behavior remain exactly V7.8.1.
+            String skinName = id == R.id.customPrayerCard
+                    ? "floating_prism_prayer.webp" : "floating_prism_weather.webp";
+            android.graphics.drawable.Drawable skin = FloatingPrismTopBarDrawable.fromFiles(
+                    getExternalFilesDir(null), skinName);
+            card.setBackground(skin != null ? skin : new PremiumGlassDrawable(card, false));
             Backdrop.watch(card);
             card.setOutlineProvider(new android.view.ViewOutlineProvider() {
                 @Override public void getOutline(View view, android.graphics.Outline outline) {
@@ -1529,11 +1535,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView line = findViewById(R.id.date);
         if (line == null) return;
         java.text.SimpleDateFormat df = new java.text.SimpleDateFormat(
-                "EEEE   |   dd MMM yyyy", Locale.ENGLISH);
+                "EEEE  |  dd MMM", Locale.ENGLISH);
         df.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
         String value = df.format(new java.util.Date());
         android.text.SpannableString styled = new android.text.SpannableString(value);
-        int dayEnd = value.indexOf("   |");
+        int dayEnd = value.indexOf("  |");
         if (dayEnd > 0) {
             styled.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
                     0, dayEnd, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
