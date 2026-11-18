@@ -129,6 +129,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     // V7.7 does not decode the V7.5 300px-per-card WebP atlas.
     // The dock is always native glass + vector + TextView, at all display densities.
 
+    private final Context ctx;
     private final TileListener listener;
     private final int dockSize;
     /** Dock order (config.xml dock_apps, or a theme's config.json). */
