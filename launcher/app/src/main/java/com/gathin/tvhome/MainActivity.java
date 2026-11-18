@@ -284,7 +284,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         android.content.SharedPreferences custom = getSharedPreferences("custom_v1", MODE_PRIVATE);
         boolean windy = custom.getBoolean("windy_clouds", true);
         cloudMotion.setCloudsEnabled(windy);
-        customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video belum ada" : (windy ? "WINDY · ON" : "WINDY · OFF"));
+        customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video unavailable" : (windy ? "WINDY · ON" : "WINDY · OFF"));
         findViewById(R.id.customWeatherCard).setOnClickListener(v -> {
             boolean next = !custom.getBoolean("windy_clouds", true);
             custom.edit().putBoolean("windy_clouds", next).apply();
@@ -917,7 +917,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final String label = placeName != null ? placeName : adapter.labelAt(position);
         final String desc = placeName != null ? placeText : "";
         final String where = placeName != null ? placeCountry : "";
-        int color = adapter.ambientColorAt(position);
+        // V7.6 keeps the background illumination stable between dock apps;
+        // only each card's crystal light crossfades on DPAD navigation.
+        int color = 0xFF9B79CD;
         heroBottom = dockTopInRoot - HERO_GAP_DP * density;
         float y = heroBottom - heroShelf.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
@@ -1501,7 +1503,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView line = findViewById(R.id.date);
         if (line == null) return;
         java.text.SimpleDateFormat df = new java.text.SimpleDateFormat(
-                "EEEE   |   dd MMM yyyy", new Locale("ms", "MY"));
+                "EEEE   |   dd MMM yyyy", Locale.ENGLISH);
         df.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
         String value = df.format(new java.util.Date());
         android.text.SpannableString styled = new android.text.SpannableString(value);

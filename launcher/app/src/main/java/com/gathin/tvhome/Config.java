@@ -174,7 +174,7 @@ final class Config {
         // Windy Clouds V2 preview uses four functional apps and an Apps drawer (fifth slot).
         // Installed apps are ordered first; missing ones are not fabricated.
         List<String> referenceDock = new ArrayList<>(Arrays.asList(
-                "com.teamsmart.videomanager.tv",
+                "org.smarttube.stable",
                 "com.netflix.ninja",
                 "com.amazon.amazonvideo.livingroom",
                 "com.spotify.tv.android"));

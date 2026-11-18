@@ -103,7 +103,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private static final PathInterpolator DOCK_IN = new PathInterpolator(.18f, .75f, .28f, 1f);
     private static final PathInterpolator DOCK_OUT = new PathInterpolator(.22f, .0f, .27f, 1f);
     /** Design size of a tile (dp); tiles shrink from here when the columns don't fit, see tileWidthPx. */
-    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 82f;
+    static final float DESIGN_W_DP = 180f, DESIGN_H_DP = 90f;
 
     /**
      * Tile width for a grid of this inner width: the cell minus room for the focus zoom and the glass
@@ -136,8 +136,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 try {
                     // One lightweight WebP contains exactly five approved tiles.
                     // Split it once on launch; do not decode during DPAD focus animation.
-                    java.io.File image = new java.io.File(folder, "locked_tiles_v74.webp");
-                    if (image.isFile() && image.length() < 131072) {
+                    java.io.File image = new java.io.File(folder, "locked_tiles_v75.webp");
+                    if (image.isFile() && image.length() < 262144) {
                         android.graphics.BitmapFactory.Options opts =
                                 new android.graphics.BitmapFactory.Options();
                         // Avoid RGB_565 colour banding on the five small gradients.
@@ -148,15 +148,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         if (sprite != null && sprite.getWidth() % 5 == 0) {
                             int width = sprite.getWidth() / 5;
                             int height = sprite.getHeight();
-                            // Crop to the same visible rounded-card geometry as V7.3.
-                            // V7.4 artwork has no hard black corner/shadow in the source;
-                            // Prime Video and Spotify pixels remain identical to V7.3.
-                            int trimX = Math.max(1, Math.round(width * .027f));
-                            int trimY = Math.max(1, Math.round(height * .061f));
+                            // V7.5 artwork is already transparent and antialiased to the
+                            // exact card silhouette. Cropping the edges created black seams.
                             for (int i = 0; i < 5; i++) {
                                 lockedTiles[i] = Bitmap.createBitmap(sprite,
-                                        i * width + trimX, trimY,
-                                        width - trimX * 2, height - trimY * 2);
+                                        i * width, 0, width, height);
                             }
                         }
                     }
@@ -307,9 +303,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         });
         // Four requested brand slots plus Apps. Keep Spotify in slot 4 and never substitute an unrelated app.
         // A missing app displays a labelled shortcut that explains it is not installed.
-        String[] dockPackages = {"com.teamsmart.videomanager.tv", "com.netflix.ninja",
+        String[] dockPackages = {"org.smarttube.stable", "com.netflix.ninja",
                 "com.amazon.amazonvideo.livingroom", "com.spotify.tv.android"};
-        String[] dockLabels = {"SmartTube", "Netflix", "Prime Video", "Spotify"};
+        String[] dockLabels = {"YouTube", "Netflix", "Prime Video", "Spotify"};
         List<Entry> ordered = new ArrayList<>();
         for (int i = 0; i < dockPackages.length; i++) {
             Entry chosen = null;
@@ -318,7 +314,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 String pkg = candidate.pkg.toLowerCase(java.util.Locale.ROOT);
                 String name = candidate.label.toLowerCase(java.util.Locale.ROOT);
                 boolean match = candidate.pkg.equals(dockPackages[i]);
-                if (i == 0) match |= pkg.contains("teamsmart") || pkg.contains("smarttube") || pkg.contains("smarttubetv") || name.equals("smarttube");
+                if (i == 0) match = candidate.pkg.equals("org.smarttube.stable"); // YouTube-looking tile opens SmartTube Stable.
                 if (i == 1) match |= pkg.contains("netflix");
                 if (i == 2) match |= pkg.contains("amazonvideo") || pkg.contains("avod.thirdpartyclient")
                         || name.equals("prime video") || name.contains("prime video");
@@ -376,6 +372,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         int inner = width - parent.getPaddingLeft() - parent.getPaddingRight();
         int w = tileWidthPx(inner, dockSize, density), h = tileHeightPx(w);
         View card = v.findViewById(R.id.card);
+        View aura = v.findViewById(R.id.focusAura);
+        ViewGroup.LayoutParams auraLp = aura.getLayoutParams();
+        auraLp.width = w + Math.round(22 * density);
+        auraLp.height = h;
+        aura.setLayoutParams(auraLp);
         ViewGroup.LayoutParams cardLp = card.getLayoutParams();
         cardLp.width = w;
         cardLp.height = h;
@@ -395,25 +396,32 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.name.setVisibility(position < dockSize ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : 0f);
-        h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
-        h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
+        h.card.setScaleX(focused && position >= dockSize ? FOCUS_SCALE : 1f);
+        h.card.setScaleY(focused && position >= dockSize ? FOCUS_SCALE : 1f);
         // Compact cinematic dock on the Custom V1 branch, with a static translucent fill and
         // focus pink border. The full app grid still uses ordinary banners.
         boolean inDock = position < dockSize;
         float d = ctx.getResources().getDisplayMetrics().density;
         FrameLayout.LayoutParams iconLp = (FrameLayout.LayoutParams) h.icon.getLayoutParams();
         FrameLayout.LayoutParams labelLp = (FrameLayout.LayoutParams) h.label.getLayoutParams();
+        h.aura.animate().cancel();
+        h.aura.setVisibility(inDock ? View.VISIBLE : View.GONE);
+        h.aura.setAlpha(inDock && focused ? .94f : 0f);
         if (inDock) {
             h.premiumGlass.syncFocus(focused);
-            h.card.setScaleX(focused ? 1.055f : 1f);
-            h.card.setScaleY(focused ? 1.055f : 1f);
-            h.card.setTranslationY(focused ? -2f * d : 0f);
+            // The approved Soft Light Handoff video never moves or scales cards.
+            // Only focus illumination crossfades, preserving typography sharpness.
+            h.card.setScaleX(1f);
+            h.card.setScaleY(1f);
+            h.card.setTranslationY(0f);
             h.card.setTranslationZ(0f);
             int brand = position;
             // All five selected artworks ship with the installer, based on the locked 5-tile
             // design. Do NOT use installed apps' banners: those change with app updates.
-            Bitmap lockedTile = lockedTile(ctx, brand);
-            boolean fullArtwork = lockedTile != null;
+            // V7.6 deliberately uses native vector icons and native text instead
+            // of the V7.5 low-resolution full-card bitmap atlas.
+            Bitmap lockedTile = null;
+            boolean fullArtwork = false;
             h.premiumGlass.setArtworkOnlyFocus(fullArtwork);
             if (fullArtwork) {
                 // Artwork includes its own border; overlay only the animated focus line.
@@ -438,25 +446,41 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (!fullArtwork && art != 0) {
                 h.icon.setImageResource(art);
                 h.icon.setVisibility(View.VISIBLE);
-                iconLp.width = Math.round(40 * d);
-                iconLp.height = Math.round(40 * d);
-                iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-                iconLp.leftMargin = Math.round(16 * d);
-                iconLp.bottomMargin = 0;
+                iconLp.width = Math.round((brand == 0 ? 51 : brand == 1 ? 35
+                        : brand == 2 ? 54 : brand == 3 ? 42 : 37) * d);
+                iconLp.height = Math.round((brand == 0 ? 38 : brand == 1 ? 43
+                        : brand == 2 ? 22 : brand == 3 ? 42 : 37) * d);
+                if (brand == 2) {
+                    // The cyan Prime smile rests UNDER the native white wordmark.
+                    iconLp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                    iconLp.leftMargin = 0;
+                    iconLp.bottomMargin = Math.round(13 * d);
+                } else {
+                    iconLp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+                    iconLp.leftMargin = Math.round((brand == 1 ? 26 : 17) * d);
+                    iconLp.bottomMargin = 0;
+                }
                 h.icon.setLayoutParams(iconLp);
+                h.icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
             } else h.icon.setVisibility(View.GONE);
             labelLp.height = ViewGroup.LayoutParams.MATCH_PARENT;
             labelLp.gravity = Gravity.CENTER_VERTICAL;
             h.label.setLayoutParams(labelLp);
-            h.label.setText(brand == 0 ? "SmartTube" : brand == 1 ? "Netflix"
-                    : brand == 2 ? "Prime Video" : brand == 3 ? "Spotify" : "Apps");
-            h.label.setTextSize(brand == 2 ? 15f : 17f);
+            h.label.setText(brand == 0 ? "YouTube" : brand == 1 ? "Netflix"
+                    : brand == 2 ? "prime video" : brand == 3 ? "Spotify" : "Apps");
+            h.label.setTextSize(brand == 2 ? 19f : brand == 4 ? 17f : 18f);
             h.label.setTypeface(android.graphics.Typeface.create(
-                    "sans-serif-medium", android.graphics.Typeface.NORMAL));
+                    "sans-serif-medium", android.graphics.Typeface.BOLD));
             h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
             h.label.setCompoundDrawablePadding(0);
-            h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-            h.label.setPadding(Math.round(60 * d), 0, Math.round(6 * d), 0);
+            if (brand == 2) {
+                h.label.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+                h.label.setPadding(0, Math.round(21 * d), 0, 0);
+            } else {
+                h.label.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+                h.label.setPadding(Math.round((brand == 1 ? 73 : brand == 3 ? 66 : 68) * d),
+                        0, Math.round(5 * d), 0);
+            }
             h.label.setVisibility(fullArtwork ? View.GONE : View.VISIBLE);
         } else {
             h.premiumGlass.setArtworkOnlyFocus(false);
@@ -518,6 +542,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     public void onViewRecycled(@NonNull Holder h) {
         h.card.animate().cancel();
         h.name.animate().cancel();
+        h.aura.animate().cancel();
+        h.aura.setAlpha(0f);
         h.premiumGlass.stopFocus();
         h.card.setTranslationY(0f);
         h.card.setTranslationZ(0f);
@@ -582,8 +608,26 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             return;
         }
         if (e.kind == Entry.SHORTCUT) {
-            Toast.makeText(ctx, e.label + " belum dipasang pada TV ini", Toast.LENGTH_LONG).show();
+            Toast.makeText(ctx, e.label + " is not installed on this TV", Toast.LENGTH_LONG).show();
             return;
+        }
+        // The tile is visually YouTube, but must launch the installed SmartTube Stable.
+        // Prefer the app's published TV launcher intent; keep an explicit fallback.
+        if ("org.smarttube.stable".equals(e.pkg)) {
+            try {
+                Intent stable = ctx.getPackageManager()
+                        .getLeanbackLaunchIntentForPackage("org.smarttube.stable");
+                if (stable == null) stable = ctx.getPackageManager()
+                        .getLaunchIntentForPackage("org.smarttube.stable");
+                if (stable != null) {
+                    stable.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                            | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    ctx.startActivity(stable);
+                    return;
+                }
+            } catch (RuntimeException ignored) {
+                // Fall through to the app's previously resolved component.
+            }
         }
         Intent i = new Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
@@ -681,6 +725,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     static final class Holder extends RecyclerView.ViewHolder {
         final View card;
+        final View aura;
         final PremiumGlassDrawable premiumGlass;
         final ImageView banner;
         final ImageView icon;
@@ -691,6 +736,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         Holder(View v, TileListener listener, boolean reducedMotion) {
             super(v);
             card = v.findViewById(R.id.card);
+            aura = v.findViewById(R.id.focusAura);
             premiumGlass = new PremiumGlassDrawable(card, true);
             Backdrop.watch(card);
             banner = v.findViewById(R.id.banner);
@@ -726,7 +772,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             card.setOnFocusChangeListener((view, focused) -> {
                 int cardIndex = getBindingAdapterPosition();
                 boolean inDock = cardIndex >= 0 && cardIndex < 5;
-                float scale = focused ? (inDock ? 1.055f : FOCUS_SCALE) : 1f;
+                float scale = focused && !inDock ? FOCUS_SCALE : 1f;
                 if (Build.VERSION.SDK_INT >= 28) {
                     view.setOutlineAmbientShadowColor(0xA8EC57BD);
                     view.setOutlineSpotShadowColor(0xA8EC57BD);
@@ -735,17 +781,20 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 view.animate().cancel();
                 name.animate().cancel();
                 if (inDock) {
-                    // One property animation, one reused highlight animator; no bounce or
-                    // live blur. Every keypress smoothly retargets from the current values.
+                    // The video-approved 240ms handoff: no moving focus panel,
+                    // no scaling, no bounce, no line. Old tile fades OUT and new IN.
                     premiumGlass.animateFocus(focused);
-                    view.animate()
-                            .scaleX(scale).scaleY(scale)
-                            .translationY(focused ? -2f * density : 0f)
-                            .translationZ(0f)
-                            .setDuration(focused ? 215L : 165L)
-                            .setInterpolator(focused ? DOCK_IN : DOCK_OUT)
+                    aura.animate().cancel();
+                    aura.animate()
+                            .alpha(focused ? .94f : 0f)
+                            .setDuration(240L)
+                            .setInterpolator(DOCK_IN)
                             .start();
-                    name.setAlpha(0f); // dock names are not displayed under the tiles
+                    view.setScaleX(1f);
+                    view.setScaleY(1f);
+                    view.setTranslationY(0f);
+                    view.setTranslationZ(0f);
+                    name.setAlpha(0f);
                 } else if (reducedMotion) {
                     view.animate().scaleX(scale).scaleY(scale)
                             .translationY(0f).translationZ(0f)

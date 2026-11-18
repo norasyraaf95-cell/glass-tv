@@ -6,6 +6,7 @@ import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.PixelFormat;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -36,6 +37,8 @@ final class PremiumGlassDrawable extends Drawable {
     private final Paint lowerGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusWash = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** Seamless handoff: a bounded alpha-only radial wash, NEVER a moving outline. */
+    private final Paint focusLight = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Matrix matrix = new Matrix();
     private float opacity = 1f;
     // Selected full-card brand artwork is rendered by a lightweight ImageView underneath.
@@ -53,17 +56,17 @@ final class PremiumGlassDrawable extends Drawable {
         // covered the blurred wallpaper. Keep the dusk colours visible beneath.
         dark.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
-                        ? new int[]{0x77453660, 0x8B312548, 0x9A201D35}
+                        ? new int[]{0x804E366A, 0x82412B60, 0x88281C46}
                         : new int[]{0x4A48335E, 0x4D35284F, 0x5C2C2247},
                 new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
         // Wide diffuse highlight across the top of the glass, no sharp white border.
         reflection.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
-                        ? new int[]{0x57FFF4FF, 0x19E4D8FF, 0x00FFFFFF}
+                        ? new int[]{0x75FFF4FF, 0x20E4D8FF, 0x00FFFFFF}
                         : new int[]{0x35FFF4FF, 0x14E9DFFF, 0x00FFFFFF},
                 new float[]{0f, .39f, .87f}, Shader.TileMode.CLAMP));
         lowerGlow.setShader(new LinearGradient(0f, 0f, 0f, 1f,
-                dock ? new int[]{0x00000000, 0x00FFA2E4, 0x18FF7DD2}
+                dock ? new int[]{0x00000000, 0x22BE9BFC, 0x40CA90FF}
                         : new int[]{0x00000000, 0x00FFA2E4, 0x0DFFA6E5},
                 new float[]{0f, .68f, 1f}, Shader.TileMode.CLAMP));
         rim.setStyle(Paint.Style.STROKE);
@@ -75,14 +78,17 @@ final class PremiumGlassDrawable extends Drawable {
         // A single anti-aliased border replaces the three concentric strokes.
         // The remaining soft halo comes from the View's colored elevation shadow.
         focusRim.setStyle(Paint.Style.STROKE);
-        focusRim.setStrokeWidth(1.55f * density);
+        focusRim.setStrokeWidth(1.05f * density);
         focusRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
-                new int[]{0xF3FFA8DC, 0xEFFF69C3, 0xDCF641AD, 0xF0FF9ED7},
+                new int[]{0xECFFF0FF, 0xD8FF96D6, 0xC9DABAF4, 0xDAFFD3F2},
                 new float[]{0f, .28f, .72f, 1f}, Shader.TileMode.CLAMP));
         focusWash.setColor(0x20F348B5);
+        focusLight.setShader(new RadialGradient(.50f, .58f, .72f,
+                new int[]{0x90F0B9FF, 0x42D9A0FF, 0x00C88AFF},
+                new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
         focusFade = ValueAnimator.ofFloat(0f, 1f);
-        focusFade.setDuration(195L);
-        focusFade.setInterpolator(new PathInterpolator(.2f, .72f, .25f, 1f));
+        focusFade.setDuration(240L);
+        focusFade.setInterpolator(new PathInterpolator(.22f, .05f, .22f, 1f));
         focusFade.addUpdateListener(a -> {
             focusAmount = (float) a.getAnimatedValue();
             invalidateSelf();
@@ -96,16 +102,22 @@ final class PremiumGlassDrawable extends Drawable {
                 (dock ? 19f : 28f) * density);
         boolean focused = dock && focusAmount > .005f;
         if (artworkOnlyFocus) {
-            // V7.3: brand tiles already contain their own softly blended material.
-            // Never overlay another white/pink outline on top of their corners.
-            // Only a low-opacity, whole-surface tint marks remote focus.
+            // V7.5 Option 1: the five static WebP tiles include their own transparent
+            // glass surfaces. The only runtime change is a restrained, one-stroke
+            // focus highlight, drawn INSIDE the rounded outline. No view shadow,
+            // no realtime blur, no external glow or extra bitmap allocations.
             if (focused) {
-                float inset = 1.5f * density;
+                float inset = 1.2f * density;
                 inner.set(bounds);
                 inner.inset(inset, inset);
-                focusWash.setAlpha(Math.round(0x22 * opacity * focusAmount));
-                canvas.drawRoundRect(inner, Math.max(0f, radius - inset),
-                        Math.max(0f, radius - inset), focusWash);
+                float innerRadius = Math.max(0f, radius - inset);
+                focusWash.setAlpha(Math.round(0x17 * opacity * focusAmount));
+                canvas.drawRoundRect(inner, innerRadius, innerRadius, focusWash);
+                matrix.setScale(bounds.width(), bounds.height());
+                matrix.postTranslate(bounds.left, bounds.top);
+                focusRim.getShader().setLocalMatrix(matrix);
+                focusRim.setAlpha(Math.round(205f * opacity * focusAmount));
+                canvas.drawRoundRect(inner, innerRadius, innerRadius, focusRim);
             }
             return;
         }
@@ -134,25 +146,19 @@ final class PremiumGlassDrawable extends Drawable {
         matrix.setScale(bounds.width(), bounds.height());
         matrix.postTranslate(bounds.left, bounds.top);
         rim.getShader().setLocalMatrix(matrix);
-        // Fade the normal pale rim OUT as the magenta focus fades IN: no double outline.
-        rim.setAlpha(Math.round(255f * opacity * (dock ? 1f - focusAmount : 1f)));
-        if (!dock || focusAmount < .999f)
-            canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
+        // A permanent, fine optical edge belongs to the GLASS material, not to focus.
+        // It never changes position or brightness when navigating with the D-pad.
+        rim.setAlpha(Math.round(155f * opacity));
+        canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
 
         if (focused) {
-            // Uniform round geometry with the Android clip outline (19dp in dock).
-            // Gentle interior tint adds depth without drawing extra hard-edged rings.
-            float focusInset = 1.1f * density;
-            inner.set(bounds);
-            inner.inset(focusInset, focusInset);
-            float focusRadius = Math.max(0f, radius - focusInset);
-            focusWash.setAlpha(Math.round(0x20 * opacity * focusAmount));
-            canvas.drawRoundRect(inner, focusRadius, focusRadius, focusWash);
+            // V7.6 Soft Light Handoff: each tile's illumination crossfades in place.
+            // This radial wash has no stroke, ellipse outline, moving shadow or scanline.
             matrix.setScale(bounds.width(), bounds.height());
             matrix.postTranslate(bounds.left, bounds.top);
-            focusRim.getShader().setLocalMatrix(matrix);
-            focusRim.setAlpha(Math.round(255f * opacity * focusAmount));
-            canvas.drawRoundRect(inner, focusRadius, focusRadius, focusRim);
+            focusLight.getShader().setLocalMatrix(matrix);
+            focusLight.setAlpha(Math.round(210f * opacity * focusAmount));
+            canvas.drawRoundRect(bounds, radius, radius, focusLight);
         }
     }
 
