@@ -31,6 +31,9 @@ final class V78AssetInstaller {
         if (dir == null) return false;
         File pack = new File(dir, ARCHIVE);
         if (!pack.isFile()) return new File(dir, "liquid_dock_base.webp").isFile();
+        File marker = new File(dir, ".v78_artwork_installed");
+        if (marker.isFile() && new File(dir, "liquid_dock_focused.webp").isFile())
+            return true;
         int count = 0;
         long total = 0;
         try (InputStream input = new BufferedInputStream(new java.io.FileInputStream(pack));
@@ -66,6 +69,11 @@ final class V78AssetInstaller {
                 count++;
                 zip.closeEntry();
             }
+            if (new File(dir, "liquid_dock_base.webp").isFile()
+                    && new File(dir, "liquid_dock_focused.webp").isFile()
+                    && new File(dir, "liquid_focus_glow.webp").isFile()
+                    && new File(dir, "liquid_static_reflections.webp").isFile())
+                marker.createNewFile();
             Log.i("GlassTV.V78", "Asset pack loaded, files installed=" + count);
         } catch (Exception error) {
             Log.e("GlassTV.V78", "Asset pack is invalid", error);
