@@ -1,5 +1,6 @@
 package com.gathin.tvhome;
 
+import android.animation.ValueAnimator;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -351,6 +352,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         haloLp.width = w + Math.round(24 * density);
         haloLp.height = h + Math.round(30 * density);
         halo.setLayoutParams(haloLp);
+        // The reactive reflection is centered below the card. Translation does
+        // not affect RecyclerView row height, so the approved dock stays parked.
+        ImageView refl = v.findViewById(R.id.focusReflection);
+        FrameLayout.LayoutParams reflLp = (FrameLayout.LayoutParams) refl.getLayoutParams();
+        reflLp.width = w;
+        reflLp.height = Math.round(55 * density);
+        refl.setLayoutParams(reflLp);
+        refl.setTranslationY(h + 1.5f * density);
         View name = v.findViewById(R.id.name);
         ViewGroup.MarginLayoutParams nameLp = (ViewGroup.MarginLayoutParams) name.getLayoutParams();
         nameLp.width = w;
@@ -390,14 +399,15 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 h.banner.setScaleType(ImageView.ScaleType.FIT_XY);
                 h.banner.setImageBitmap(pack.idle[position]);
                 h.banner.setVisibility(View.VISIBLE);
-                h.focusedArtwork.animate().cancel();
+                // V7.8.1 focus PNG is an illumination-only transparent layer.
+                // No logo, typography or glass bitmap crossfades.
                 h.focusedArtwork.setImageBitmap(pack.focus[position]);
                 h.focusedArtwork.setVisibility(View.VISIBLE);
-                h.focusedArtwork.setAlpha(focused ? 1f : 0f);
-                h.focusHalo.animate().cancel();
                 h.focusHalo.setImageBitmap(pack.focusHalo);
                 h.focusHalo.setVisibility(View.VISIBLE);
-                h.focusHalo.setAlpha(focused ? .92f : 0f);
+                h.focusReflection.setImageBitmap(pack.activeReflections[position]);
+                h.focusReflection.setVisibility(View.VISIBLE);
+                h.syncLight(focused ? 1f : 0f);
                 h.icon.setVisibility(View.GONE);
                 h.label.setVisibility(View.GONE);
             } else {
@@ -473,14 +483,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.icon.setLayoutParams(iconLp);
             }
         } else {
-            h.focusedArtwork.animate().cancel();
+            h.syncLight(0f);
             h.focusedArtwork.setVisibility(View.GONE);
             h.focusedArtwork.setImageDrawable(null);
-            h.focusedArtwork.setAlpha(0f);
-            h.focusHalo.animate().cancel();
             h.focusHalo.setVisibility(View.GONE);
             h.focusHalo.setImageDrawable(null);
-            h.focusHalo.setAlpha(0f);
+            h.focusReflection.setVisibility(View.GONE);
+            h.focusReflection.setImageDrawable(null);
             h.card.setForeground(null);
             h.card.setBackgroundResource(R.drawable.tile_bg);
             iconLp.width = Math.round(48 * d);
@@ -539,10 +548,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     public void onViewRecycled(@NonNull Holder h) {
         h.card.animate().cancel();
         h.name.animate().cancel();
-        h.focusedArtwork.animate().cancel();
-        h.focusHalo.animate().cancel();
-        h.focusedArtwork.setAlpha(0f);
-        h.focusHalo.setAlpha(0f);
+        h.syncLight(0f);
         h.dockGlass.stopFocus();
         h.card.setTranslationY(0f);
         h.card.setTranslationZ(0f);
@@ -728,6 +734,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         final ImageView banner;
         final ImageView focusedArtwork;
         final ImageView focusHalo;
+        final ImageView focusReflection;
+        final ValueAnimator lightAnimator = ValueAnimator.ofFloat(0f, 1f);
+        float lightIntensity = 0f;
         final ImageView icon;
         final TextView label;
         final TextView name;
@@ -741,10 +750,16 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             banner = v.findViewById(R.id.banner);
             focusedArtwork = v.findViewById(R.id.focusedArtwork);
             focusHalo = v.findViewById(R.id.focusHalo);
+            focusReflection = v.findViewById(R.id.focusReflection);
             icon = v.findViewById(R.id.icon);
             label = v.findViewById(R.id.label);
             name = v.findViewById(R.id.name);
             this.reducedMotion = reducedMotion;
+            // One animation timeline synchronizes all THREE stationary light
+            // layers. Retarget from current intensity on rapid DPAD reversal.
+            lightAnimator.setDuration(240L);
+            lightAnimator.setInterpolator(new PathInterpolator(.20f, .0f, .22f, 1f));
+            lightAnimator.addUpdateListener(a -> applyLight((float) a.getAnimatedValue()));
 
             final float density = v.getResources().getDisplayMetrics().density;
             card.setOutlineProvider(new ViewOutlineProvider() {
@@ -786,14 +801,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     // handoff. The icon, text, card bounds and static glass
                     // never animate. Fast key presses start from the current light.
                     if (DockArtwork.get(view.getContext()).valid) {
-                        // In-place SOFT LIGHT HANDOFF: independently fade old focus out
-                        // and new focus in, both from their CURRENT alpha on rapid taps.
-                        focusedArtwork.animate().cancel();
-                        focusedArtwork.animate().alpha(focused ? 1f : 0f)
-                                .setDuration(240L).setInterpolator(DOCK_IN).start();
-                        focusHalo.animate().cancel();
-                        focusHalo.animate().alpha(focused ? .92f : 0f)
-                                .setDuration(240L).setInterpolator(DOCK_IN).start();
+                        // V7.8.1: no moving art, only synchronized illumination.
+                        // Glass and logos stay pixel-perfect while light changes.
+                        animateLight(focused);
                     } else {
                         dockGlass.animateFocus(focused);
                     }
@@ -824,6 +834,26 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     listener.onTileFocused(pos, view);
                 }
             });
+        }
+
+        void applyLight(float fraction) {
+            lightIntensity = Math.max(0f, Math.min(1f, fraction));
+            focusedArtwork.setAlpha(lightIntensity);
+            focusHalo.setAlpha(lightIntensity * .76f);
+            focusReflection.setAlpha(lightIntensity * .70f);
+        }
+
+        void syncLight(float fraction) {
+            lightAnimator.cancel();
+            applyLight(fraction);
+        }
+
+        void animateLight(boolean focused) {
+            lightAnimator.cancel();
+            float target = focused ? 1f : 0f;
+            if (Math.abs(lightIntensity - target) < .001f) return;
+            lightAnimator.setFloatValues(lightIntensity, target);
+            lightAnimator.start();
         }
     }
 }
