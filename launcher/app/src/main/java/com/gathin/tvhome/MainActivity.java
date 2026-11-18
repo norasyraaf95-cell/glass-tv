@@ -246,6 +246,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // V7.8 is a side-by-side package. The approved wallpaper, config and
+        // pre-rendered dock textures are installed from ONE ZIP in this app's own files.
+        // Do this before Config.load so the original wallpaper is never replaced by places.
+        V78AssetInstaller.prepare(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
@@ -258,6 +262,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sourcePanelAction = cfg.sourcePanelAction;
 
         root = findViewById(R.id.root);
+        // The fixed floor reflections are a single cached texture from the locked
+        // visual reference, never recomputed or moved in response to focus.
+        final android.widget.ImageView dockReflection = findViewById(R.id.dockStaticReflection);
+        DockArtwork v78Artwork = DockArtwork.get(this);
+        if (v78Artwork.valid) {
+            dockReflection.setImageBitmap(v78Artwork.reflections);
+            dockReflection.setVisibility(View.VISIBLE);
+            root.post(() -> {
+                android.widget.FrameLayout.LayoutParams lp =
+                        (android.widget.FrameLayout.LayoutParams) dockReflection.getLayoutParams();
+                lp.height = Math.max(1, Math.round(root.getHeight() * 0.194f));
+                dockReflection.setLayoutParams(lp);
+            });
+        }
         // Custom premium frosted material uses wallpaper's existing half-resolution blur.
         // No live blur on the moving video: Android 10 GPU / 1GB RAM safe.
         for (int id : new int[]{R.id.customPrayerCard, R.id.customWeatherCard}) {
@@ -1272,6 +1290,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
      * back up again.
      */
     private void showAmbient(int color) {
+        // The locked reference has ONE stationary sunset wallpaper. In the dock,
+        // we crossfade local tile illumination ONLY: never tint the entire room.
+        if (lastFocused < COLUMNS && DockArtwork.get(this).valid) {
+            ambient.animate().cancel();
+            ambient.setAlpha(0f);
+            ambientShown = false;
+            return;
+        }
         if (!ambientShown) {
             setAmbient(color);
             ambient.animate().alpha(1f).setDuration(reducedMotion ? 160 : 600)

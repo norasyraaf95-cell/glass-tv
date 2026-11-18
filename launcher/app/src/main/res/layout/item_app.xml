@@ -7,6 +7,20 @@
     android:clipChildren="false"
     android:clipToPadding="false">
 
+    <!-- Behind the tile: a PRE-RENDERED, blurred focus halo. Alpha only. -->
+    <ImageView
+        android:id="@+id/focusHalo"
+        android:layout_width="204dp"
+        android:layout_height="118dp"
+        android:layout_gravity="center_horizontal|top"
+        android:scaleType="fitXY"
+        android:alpha="0"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:contentDescription="@null" />
+
     <FrameLayout
         android:id="@+id/card"
         android:layout_width="180dp"
@@ -21,6 +35,19 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
+            android:contentDescription="@null" />
+
+        <!-- The selected PRE-RENDERED tile fades over the stationary idle tile. -->
+        <ImageView
+            android:id="@+id/focusedArtwork"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitXY"
+            android:alpha="0"
+            android:visibility="gone"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no"
             android:contentDescription="@null" />
 
         <ImageView
