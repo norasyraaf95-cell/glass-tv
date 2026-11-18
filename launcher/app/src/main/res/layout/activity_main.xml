@@ -5,6 +5,13 @@
     android:layout_height="match_parent"
     android:background="#FF000000">
 
+    <!-- Atmospheric motion runs behind content and is stopped when Home is paused. -->
+    <com.gathin.tvhome.WindyCloudView
+        android:id="@+id/cloudMotion"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
     <!-- Ambient glow in the colour of the focused dock app. -->
     <View
         android:id="@+id/ambient"
@@ -81,105 +88,82 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- Reference clock: Malay date above oversized white digits, no circle. -->
             <LinearLayout
                 android:id="@+id/leftBlock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_alignParentStart="true"
                 android:layout_toStartOf="@+id/topButtons"
-                android:layout_marginEnd="16dp"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:layout_marginTop="75dp"
+                android:layout_marginEnd="16dp">
 
-                <!-- The header texts use gravity left, not start: the launcher lays out left to right
-                     (no supportsRtl), and with start a right-to-left script such as Arabic would move to the
-                     right edge of these full-width lines instead of staying under the clock. -->
-                <!-- The clock keeps the place it had under the greeting that used to sit above it. -->
                 <LinearLayout
+                    android:id="@+id/dateBlock"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="15dp"
                     android:orientation="horizontal"
-                    android:baselineAligned="false">
+                    android:gravity="center_vertical">
+                    <TextView
+                        android:id="@+id/shamsiDate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:textColor="#F3FFFFFF"
+                        android:textSize="14sp"
+                        android:fontFamily="@font/outfit" />
+                    <TextView
+                        android:id="@+id/date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Wednesday  |  18 Nov 2026"
+                        android:textColor="#ECFFFFFF"
+                        android:textSize="16sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 500"
+                        android:includeFontPadding="false" />
+                </LinearLayout>
 
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:orientation="horizontal"
+                    android:gravity="bottom"
+                    android:baselineAligned="false">
                     <TextClock
                         android:id="@+id/clock"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:format12Hour="h:mm"
+                        android:format12Hour="hh:mm"
                         android:format24Hour="HH:mm"
                         android:textColor="#FFFFFFFF"
-                        android:textSize="52sp"
+                        android:textSize="80sp"
                         android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 300"
-                        android:letterSpacing="-0.04"
+                        android:fontVariationSettings="'wght' 750"
+                        android:letterSpacing="-0.06"
                         android:includeFontPadding="false" />
-
-                    <!-- AM/PM over the date, both starting at the same line: the date on the digits'
-                         baseline, AM/PM resting halfway between the top of the digits and the date (placed in
-                         code). -->
-                    <FrameLayout
-                        android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="8dp">
-
-                        <TextClock
-                            android:id="@+id/ampm"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="top|start"
-                            android:includeFontPadding="false"
-                            android:format12Hour="a"
-                            android:format24Hour=""
-                            android:textColor="#B3FFFFFF"
-                            android:textSize="15sp"
-                            android:fontFamily="@font/outfit"
-                            android:fontVariationSettings="'wght' 500"
-                            android:letterSpacing="0.08"
-                            android:textAllCaps="true" />
-
-                        <LinearLayout
-                            android:id="@+id/dateBlock"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_gravity="bottom"
-                            android:orientation="vertical">
-
-                            <!-- Shamsi date ("27 Mehr 1405"), shown when shamsi_date is on. -->
-                            <TextView
-                                android:id="@+id/shamsiDate"
-                                android:gravity="left"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:singleLine="true"
-                                android:ellipsize="end"
-                                android:textColor="#E6FFFFFF"
-                                android:textSize="17sp"
-                                android:fontFamily="@font/outfit"
-                                android:fontVariationSettings="'wght' 400"
-                                android:letterSpacing="0.02"
-                                android:includeFontPadding="false"
-                                android:visibility="gone" />
-
-                            <TextClock
-                                android:id="@+id/date"
-                                android:gravity="left"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:singleLine="true"
-                                android:ellipsize="end"
-                                android:includeFontPadding="false"
-                                android:format12Hour="@string/date_format"
-                                android:format24Hour="@string/date_format"
-                                android:textColor="#A6FFFFFF"
-                                android:textSize="14sp"
-                                android:fontFamily="@font/outfit"
-                                android:fontVariationSettings="'wght' 400"
-                                android:letterSpacing="0.14"
-                                android:textAllCaps="true" />
-                        </LinearLayout>
-                    </FrameLayout>
+                    <TextClock
+                        android:id="@+id/ampm"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_marginBottom="17dp"
+                        android:includeFontPadding="false"
+                        android:format12Hour="a"
+                        android:format24Hour=""
+                        android:textColor="#E6FFFFFF"
+                        android:textSize="19sp"
+                        android:fontFamily="@font/outfit"
+                        android:fontVariationSettings="'wght' 550" />
                 </LinearLayout>
+                <View
+                    android:layout_width="242dp"
+                    android:layout_height="2dp"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/custom_clock_glow"
+                    android:importantForAccessibility="no" />
             </LinearLayout>
 
             <LinearLayout
@@ -187,8 +171,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentEnd="true"
-                android:layout_alignBottom="@id/leftBlock"
-                android:layout_marginBottom="6dp"
+                android:layout_alignParentTop="true"
+                android:layout_marginTop="0dp"
                 android:orientation="horizontal">
 
                 <TextView
@@ -241,6 +225,179 @@
                 android:scrollbars="none"
                 android:descendantFocusability="afterDescendants" />
         </com.gathin.tvhome.FadeTopFrame>
+    </LinearLayout>
+
+    <!-- Reference-inspired top bar: prayer strip to the left, petite weather card to the right.
+         All data is live/cached, unlike the frozen numbers in the video mockup. -->
+    <LinearLayout
+        android:id="@+id/shahAlamCards"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="120dp"
+        android:layout_marginEnd="56dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <LinearLayout
+            android:id="@+id/customPrayerCard"
+            android:layout_width="395dp"
+            android:layout_height="55dp"
+            android:background="@drawable/custom_widget_glass"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:focusable="false">
+
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_custom_mosque"
+                android:contentDescription="@null" />
+
+            <LinearLayout
+                android:layout_width="96dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/customPrayerName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Prayer Times"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 600"
+                    android:maxLines="1" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Shah Alam · SGR01"
+                    android:textColor="#CBE5D5EF"
+                    android:textSize="10sp"
+                    android:fontFamily="@font/outfit"
+                    android:maxLines="1" />
+            </LinearLayout>
+
+            <!-- Kept for backward compatibility with ShahAlamWidgets controller. -->
+            <TextView
+                android:id="@+id/customPrayerTime"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/customPrayerStrip"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:baselineAligned="false">
+                <TextView android:id="@+id/prayerFajr" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Fajr&#10;--:--"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:fontFamily="@font/outfit" android:includeFontPadding="false" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="23dp"
+                    android:background="#75FFFFFF"
+                    android:importantForAccessibility="no" />
+                <TextView android:id="@+id/prayerDhuhr" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Dhuhr&#10;--:--"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:fontFamily="@font/outfit" android:includeFontPadding="false" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="23dp"
+                    android:background="#75FFFFFF"
+                    android:importantForAccessibility="no" />
+                <TextView android:id="@+id/prayerAsr" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Asr&#10;--:--"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:fontFamily="@font/outfit" android:includeFontPadding="false" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="23dp"
+                    android:background="#75FFFFFF"
+                    android:importantForAccessibility="no" />
+                <TextView android:id="@+id/prayerMaghrib" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Maghrib&#10;--:--"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:fontFamily="@font/outfit" android:includeFontPadding="false" />
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="23dp"
+                    android:background="#75FFFFFF"
+                    android:importantForAccessibility="no" />
+                <TextView android:id="@+id/prayerIsha" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:gravity="center" android:text="Isha&#10;--:--"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:fontFamily="@font/outfit" android:includeFontPadding="false" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/customWeatherCard"
+            android:layout_width="154dp"
+            android:layout_height="55dp"
+            android:layout_marginStart="14dp"
+            android:background="@drawable/custom_widget_glass"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:focusable="true"
+            android:clickable="true"
+            android:nextFocusDown="@id/grid"
+            android:contentDescription="Shah Alam weather. Press OK to toggle cloud motion.">
+
+            <ImageView
+                android:layout_width="31dp"
+                android:layout_height="31dp"
+                android:layout_marginEnd="7dp"
+                android:src="@drawable/ic_custom_weather"
+                android:contentDescription="@null" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_vertical">
+                <TextView
+                    android:id="@+id/customWeatherTemp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--°C"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="22sp"
+                    android:fontFamily="@font/outfit"
+                    android:fontVariationSettings="'wght' 700"
+                    android:includeFontPadding="false" />
+
+                <TextView
+                    android:id="@+id/customWeatherCondition"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Shah Alam"
+                    android:textColor="#DEFFFFFF"
+                    android:textSize="10sp"
+                    android:fontFamily="@font/outfit"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:id="@+id/customCloudToggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:text="WINDY · ON"
+                    android:visibility="gone"
+                    android:textColor="#FFDFB7EC"
+                    android:textSize="8sp"
+                    android:fontFamily="@font/outfit"
+                    android:singleLine="true" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <!-- The single floating glass highlight that springs between tiles. -->

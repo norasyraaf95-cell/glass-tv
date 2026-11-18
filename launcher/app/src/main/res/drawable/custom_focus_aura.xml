@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- V7.6: Alpha-only light for the focused dock card. It stays at the card,
+     fades in/out with the focus; no stroke or travelling ellipse is drawn. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <gradient
+        android:type="radial"
+        android:gradientRadius="150dp"
+        android:centerX="0.5"
+        android:centerY="0.52"
+        android:startColor="#78E4ADFF"
+        android:centerColor="#26D8AAFF"
+        android:endColor="#00C896FF" />
+</shape>

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, glass-tv-v7.6-soft-handoff]
   pull_request:
   workflow_dispatch:
 

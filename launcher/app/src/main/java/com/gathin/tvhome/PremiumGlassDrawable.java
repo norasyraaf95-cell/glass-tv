@@ -1,0 +1,198 @@
+package com.gathin.tvhome;
+
+import android.animation.ValueAnimator;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.RadialGradient;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
+import android.graphics.Shader;
+import android.graphics.drawable.Drawable;
+import android.view.View;
+import android.view.animation.PathInterpolator;
+
+import androidx.annotation.NonNull;
+
+/**
+ * Frosted glass matching the custom reference. Draws the PRE-BLURRED STATIC WALLPAPER patch
+ * through each card using Backdrop.Fill (already calculated off the UI thread once per wallpaper).
+ * It intentionally does not attempt to live-blur every decoded movie frame on a 1GB Android 10 TV.
+ *
+ * Material layers: aligned wallpaper blur -> translucent smoke/purple -> diffuse white internal
+ * reflection -> refractive rim -> focus-only magenta halo. Zero bitmap allocations per draw.
+ */
+final class PremiumGlassDrawable extends Drawable {
+    private final View owner;
+    private final boolean dock;
+    private final float density;
+    private final Backdrop.Fill softened = new Backdrop.Fill();
+    private final RectF bounds = new RectF();
+    private final RectF inner = new RectF();
+    private final Paint dark = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint reflection = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint lowerGlow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint focusRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint focusWash = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** Seamless handoff: a bounded alpha-only radial wash, NEVER a moving outline. */
+    private final Paint focusLight = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Matrix matrix = new Matrix();
+    private float opacity = 1f;
+    // Selected full-card brand artwork is rendered by a lightweight ImageView underneath.
+    // In this mode only paint the animated focus, never another glass border on the logo image.
+    private boolean artworkOnlyFocus;
+    /** A reused animator fades the magenta focus between cards instead of flashing instantly. */
+    private final ValueAnimator focusFade;
+    private float focusAmount;
+
+    PremiumGlassDrawable(View owner, boolean dock) {
+        this.owner = owner;
+        this.dock = dock;
+        density = owner.getResources().getDisplayMetrics().density;
+        // Reference is softly translucent lavender glass; the V4 near-black tint
+        // covered the blurred wallpaper. Keep the dusk colours visible beneath.
+        dark.setShader(new LinearGradient(0f, 0f, 0f, 1f,
+                dock
+                        ? new int[]{0x804E366A, 0x82412B60, 0x88281C46}
+                        : new int[]{0x4A48335E, 0x4D35284F, 0x5C2C2247},
+                new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
+        // Wide diffuse highlight across the top of the glass, no sharp white border.
+        reflection.setShader(new LinearGradient(0f, 0f, 0f, 1f,
+                dock
+                        ? new int[]{0x75FFF4FF, 0x20E4D8FF, 0x00FFFFFF}
+                        : new int[]{0x35FFF4FF, 0x14E9DFFF, 0x00FFFFFF},
+                new float[]{0f, .39f, .87f}, Shader.TileMode.CLAMP));
+        lowerGlow.setShader(new LinearGradient(0f, 0f, 0f, 1f,
+                dock ? new int[]{0x00000000, 0x22BE9BFC, 0x40CA90FF}
+                        : new int[]{0x00000000, 0x00FFA2E4, 0x0DFFA6E5},
+                new float[]{0f, .68f, 1f}, Shader.TileMode.CLAMP));
+        rim.setStyle(Paint.Style.STROKE);
+        rim.setStrokeWidth((dock ? .72f : .64f) * density);
+        rim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
+                dock ? new int[]{0xC4FFF0FF, 0x57D6C3EF, 0x38C7B0E4, 0x8CE6CFF5}
+                        : new int[]{0xA8F6E8FF, 0x52E0CDEE, 0x43C5A5D7, 0x87EDCFF2},
+                new float[]{0f, .28f, .73f, 1f}, Shader.TileMode.CLAMP));
+        // A single anti-aliased border replaces the three concentric strokes.
+        // The remaining soft halo comes from the View's colored elevation shadow.
+        focusRim.setStyle(Paint.Style.STROKE);
+        focusRim.setStrokeWidth(1.05f * density);
+        focusRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
+                new int[]{0xECFFF0FF, 0xD8FF96D6, 0xC9DABAF4, 0xDAFFD3F2},
+                new float[]{0f, .28f, .72f, 1f}, Shader.TileMode.CLAMP));
+        focusWash.setColor(0x20F348B5);
+        focusLight.setShader(new RadialGradient(.50f, .58f, .72f,
+                new int[]{0x90F0B9FF, 0x42D9A0FF, 0x00C88AFF},
+                new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
+        focusFade = ValueAnimator.ofFloat(0f, 1f);
+        focusFade.setDuration(240L);
+        focusFade.setInterpolator(new PathInterpolator(.22f, .05f, .22f, 1f));
+        focusFade.addUpdateListener(a -> {
+            focusAmount = (float) a.getAnimatedValue();
+            invalidateSelf();
+        });
+    }
+
+    @Override public void draw(@NonNull Canvas canvas) {
+        bounds.set(getBounds());
+        if (bounds.width() <= 0f || bounds.height() <= 0f) return;
+        float radius = Math.min(bounds.height() / 2f,
+                (dock ? 19f : 28f) * density);
+        boolean focused = dock && focusAmount > .005f;
+        if (artworkOnlyFocus) {
+            // V7.5 Option 1: the five static WebP tiles include their own transparent
+            // glass surfaces. The only runtime change is a restrained, one-stroke
+            // focus highlight, drawn INSIDE the rounded outline. No view shadow,
+            // no realtime blur, no external glow or extra bitmap allocations.
+            if (focused) {
+                float inset = 1.2f * density;
+                inner.set(bounds);
+                inner.inset(inset, inset);
+                float innerRadius = Math.max(0f, radius - inset);
+                focusWash.setAlpha(Math.round(0x17 * opacity * focusAmount));
+                canvas.drawRoundRect(inner, innerRadius, innerRadius, focusWash);
+                matrix.setScale(bounds.width(), bounds.height());
+                matrix.postTranslate(bounds.left, bounds.top);
+                focusRim.getShader().setLocalMatrix(matrix);
+                focusRim.setAlpha(Math.round(205f * opacity * focusAmount));
+                canvas.drawRoundRect(inner, innerRadius, innerRadius, focusRim);
+            }
+            return;
+        }
+
+        // The native launcher already prepares a blurred wallpaper at half resolution on
+        // background worker; use its exact screen-aligned texture instead of a fake flat fill.
+        softened.draw(canvas, owner, bounds, radius, opacity);
+
+        // Both shaders are unit-height, so local matrices position the gradient at this card.
+        matrix.setScale(1f, bounds.height());
+        matrix.postTranslate(0f, bounds.top);
+        dark.getShader().setLocalMatrix(matrix);
+        dark.setAlpha(Math.round(255f * opacity));
+        canvas.drawRoundRect(bounds, radius, radius, dark);
+
+        reflection.getShader().setLocalMatrix(matrix);
+        reflection.setAlpha(Math.round(255f * opacity));
+        canvas.drawRoundRect(bounds, radius, radius, reflection);
+        lowerGlow.getShader().setLocalMatrix(matrix);
+        lowerGlow.setAlpha(Math.round(255f * opacity));
+        canvas.drawRoundRect(bounds, radius, radius, lowerGlow);
+
+        inner.set(bounds);
+        float inset = .6f * density;
+        inner.inset(inset, inset);
+        matrix.setScale(bounds.width(), bounds.height());
+        matrix.postTranslate(bounds.left, bounds.top);
+        rim.getShader().setLocalMatrix(matrix);
+        // A permanent, fine optical edge belongs to the GLASS material, not to focus.
+        // It never changes position or brightness when navigating with the D-pad.
+        rim.setAlpha(Math.round(155f * opacity));
+        canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
+
+        if (focused) {
+            // V7.6 Soft Light Handoff: each tile's illumination crossfades in place.
+            // This radial wash has no stroke, ellipse outline, moving shadow or scanline.
+            matrix.setScale(bounds.width(), bounds.height());
+            matrix.postTranslate(bounds.left, bounds.top);
+            focusLight.getShader().setLocalMatrix(matrix);
+            focusLight.setAlpha(Math.round(210f * opacity * focusAmount));
+            canvas.drawRoundRect(bounds, radius, radius, focusLight);
+        }
+    }
+
+    void setArtworkOnlyFocus(boolean enabled) {
+        if (artworkOnlyFocus != enabled) {
+            artworkOnlyFocus = enabled;
+            invalidateSelf();
+        }
+    }
+
+    /** Start from the current brightness, including when the remote is pressed rapidly. */
+    void animateFocus(boolean focused) {
+        if (!dock) return;
+        focusFade.cancel();
+        focusFade.setFloatValues(focusAmount, focused ? 1f : 0f);
+        focusFade.start();
+    }
+
+    /** RecyclerView rebind must not flash a recycled tile with the previous focus glow. */
+    void syncFocus(boolean focused) {
+        if (!dock) return;
+        focusFade.cancel();
+        focusAmount = focused ? 1f : 0f;
+        invalidateSelf();
+    }
+
+    void stopFocus() {
+        focusFade.cancel();
+    }
+
+    @Override public void setAlpha(int alpha) {
+        opacity = Math.max(0f, Math.min(1f, alpha / 255f));
+        invalidateSelf();
+    }
+    @Override public void setColorFilter(ColorFilter ignored) {}
+    @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+}

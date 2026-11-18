@@ -85,6 +85,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private AppAdapter adapter;
     private RecyclerView grid;
+    /** Custom V1: two cached Shah Alam cards and a pauseable wallpaper atmosphere. */
+    private ShahAlamWidgets shahAlamWidgets;
+    private WindyCloudView cloudMotion;
+    private TextView customCloudToggle;
     private FrameLayout root;
     private GlassView glass;
     private View ambient;
@@ -231,6 +235,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         @Override
         public void run() {
             updateShamsiDate();
+            updateCustomDate();
             updateWifiLabel();
             refreshPlacesIfDue();
             handler.postDelayed(this, MINUTE_MS);
@@ -244,7 +249,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
-        COLUMNS = cfg.columns;
+        COLUMNS = 5; // Reference V2: four apps and functional Apps tile on one dock row.
         reducedMotion = cfg.reducedMotion;
         liveTvPkg = cfg.liveTvPackage;
         liveTvAction = cfg.liveTvAction;
@@ -253,6 +258,39 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sourcePanelAction = cfg.sourcePanelAction;
 
         root = findViewById(R.id.root);
+        // Custom premium frosted material uses wallpaper's existing half-resolution blur.
+        // No live blur on the moving video: Android 10 GPU / 1GB RAM safe.
+        for (int id : new int[]{R.id.customPrayerCard, R.id.customWeatherCard}) {
+            View card = findViewById(id);
+            card.setBackground(new PremiumGlassDrawable(card, false));
+            Backdrop.watch(card);
+            card.setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                            Math.min(view.getHeight() / 2f, 28f * density));
+                }
+            });
+            // Android's real elevation casts a hard BLACK oval under each rounded widget
+            // on the Mi Stick compositor. Keep only the soft optical rim from our drawable.
+            // No View shadow, no per-frame blur and no extra overdraw.
+            card.setStateListAnimator(null);
+            card.setElevation(0f);
+            card.setTranslationZ(0f);
+        }
+        // Install alongside the old launcher: no system component or existing Home is changed.
+        shahAlamWidgets = new ShahAlamWidgets(this);
+        cloudMotion = findViewById(R.id.cloudMotion);
+        customCloudToggle = findViewById(R.id.customCloudToggle);
+        android.content.SharedPreferences custom = getSharedPreferences("custom_v1", MODE_PRIVATE);
+        boolean windy = custom.getBoolean("windy_clouds", true);
+        cloudMotion.setCloudsEnabled(windy);
+        customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video unavailable" : (windy ? "WINDY · ON" : "WINDY · OFF"));
+        findViewById(R.id.customWeatherCard).setOnClickListener(v -> {
+            boolean next = !custom.getBoolean("windy_clouds", true);
+            custom.edit().putBoolean("windy_clouds", next).apply();
+            cloudMotion.setCloudsEnabled(next);
+            customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video belum ada" : (next ? "WINDY · ON" : "WINDY · OFF"));
+        });
         // The tiles' entrance plays once per TV boot. Android reclaims the launcher during long stays
         // in big apps; starting again then is a return to Home, not a first launch.
         long bootAt = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime();
@@ -273,6 +311,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ambient = findViewById(R.id.ambient);
         Backdrop.setWorker(wallDecoder, handler);
         heroShelf = findViewById(R.id.heroShelf);
+        // The reference is a quiet landscape: no large "YouTube" label floating above dock.
+        heroShelf.setVisibility(View.GONE);
         heroName = findViewById(R.id.heroName);
         heroDesc = findViewById(R.id.heroDesc);
         heroWhere = findViewById(R.id.heroWhere);
@@ -290,7 +330,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (heroBottom > 0) v.setY(heroBottom - v.getHeight());
         });
         btnWifi = findViewById(R.id.btnWifi);
-        if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
+        btnWifi.setVisibility(View.VISIBLE); // Reference: Wi-Fi glyph at top right.
         shamsiDate = findViewById(R.id.shamsiDate);
         shamsi = cfg.shamsiDate;
         if (shamsi) {
@@ -299,20 +339,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
-        // Beside the clock, the date sits on the digits' baseline, and AM/PM rests halfway between
-        // the top of the digits and the top of the date, its letters' foot on that line.
-        TextView clock = findViewById(R.id.clock), amPm = findViewById(R.id.ampm), dateLine = findViewById(R.id.date);
-        View dateBlock = findViewById(R.id.dateBlock);
-        dateBlock.setTranslationY(dateLine.getPaint().getFontMetrics().descent - clock.getPaint().getFontMetrics().descent);
-        // Placed once the whole column is laid out, AM/PM and the date both.
-        ((View) dateBlock.getParent()).addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            android.graphics.Rect cap = new android.graphics.Rect();
-            dateLine.getPaint().getTextBounds("O", 0, 1, cap);
-            float capsAtTop = ClockDream.capInset(clock, "0") - ClockDream.capInset(amPm, "AM");
-            float foot = amPm.getTop() + capsAtTop + amPm.getBaseline();
-            float dateTop = dateBlock.getTop() + dateBlock.getTranslationY() + dateLine.getTop() + dateLine.getBaseline() + cap.top;
-            amPm.setTranslationY(Math.round(capsAtTop + (foot + dateTop) / 2f - foot));
-        });
+        // Date is now positioned ABOVE the large clock, as in Windy Clouds V2 reference.
+        updateCustomDate();
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
@@ -348,7 +376,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         glider.addCompanion(grid, tray.area);
         for (int id : new int[]{R.id.btnInputs, R.id.btnWifi, R.id.btnSettings}) {
             View pill = findViewById(id);
-            pill.setBackground(new GlassDrawable(pill, 21 * density, density, glider));
+            pill.setBackgroundColor(Color.TRANSPARENT); // Reference has simple top icons, no glass rings.
             glider.addCompanion(pill);
             Backdrop.watch(pill);
             pill.setOnFocusChangeListener((v, has) -> {
@@ -669,8 +697,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resuming = true;
         reloadApps(true);
         updateShamsiDate();
+        updateCustomDate();
         updateWifiLabel();
         updateInputsButton();
+        shahAlamWidgets.resume();
+        cloudMotion.onHomeResume();
         startWallpaperRotation();
         handler.postDelayed(minuteTick, MINUTE_MS);
         handler.removeCallbacks(cacheClean);
@@ -758,6 +789,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onPause() {
         super.onPause();
         unregisterReceiver(packageReceiver);
+        shahAlamWidgets.pause();
+        cloudMotion.onHomePause();
         handler.removeCallbacks(minuteTick);
         handler.removeCallbacks(wallTick);
         // Nothing of ours stays on screen over another app; an undecided prompt simply returns next time.
@@ -786,6 +819,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        shahAlamWidgets.destroy();
+        cloudMotion.onHomePause();
         wallDecoder.shutdownNow();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
@@ -833,15 +868,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Exactly the zoomed card, behind it: at rest the app hides it completely, so it never lies
         // over an app and only shows while it travels between places.
         float cardRadius = AppAdapter.cornerRadius(card.getWidth(), density) * AppAdapter.FOCUS_SCALE;
-        if (gliderOnPill) {
-            // Down from the top menu it travels dark, and turns to glass once it lands, unseen behind
-            // the app.
+        if (position < COLUMNS) {
+            // Reference dock draws its own single pink focus rim and glow. The old Glider
+            // drew a second, slightly offset white rim underneath the scaled card,
+            // especially visible at rounded corners on a physical TV.
+            // Keep Glider only for the app grid and top settings navigation.
+            glider.hideNow();
+        } else if (gliderOnPill) {
             glider.moveTo(x + pad, y + pad, x + w - pad, y + h - pad, cardRadius);
             glider.onArrive(() -> {
                 if (!gliderOnPill) glider.setStyle(Glider.GLASS);
             });
         } else {
-            // From app to app it is a pane of glass gliding behind them.
             glider.setStyle(Glider.GLASS);
             glider.moveTo(x + pad, y + pad, x + w - pad, y + h - pad, cardRadius);
         }
@@ -879,7 +917,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final String label = placeName != null ? placeName : adapter.labelAt(position);
         final String desc = placeName != null ? placeText : "";
         final String where = placeName != null ? placeCountry : "";
-        int color = adapter.ambientColorAt(position);
+        // V7.6 keeps the background illumination stable between dock apps;
+        // only each card's crystal light crossfades on DPAD navigation.
+        int color = 0xFF9B79CD;
         heroBottom = dockTopInRoot - HERO_GAP_DP * density;
         float y = heroBottom - heroShelf.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
@@ -1099,7 +1139,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int inner = grid.getWidth() - grid.getPaddingLeft() - grid.getPaddingRight();
         int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(AppAdapter.tileWidthPx(inner, COLUMNS, density)), density);
         int dockRow = itemH + (int) ((6 + 12) * density);   // item height plus DockDecoration offsets
-        int want = Math.max(0, h - dockRow - itemH * rowsBelowDockSetting - (int) (30 * density));
+        int want = Math.max(0, h - dockRow - itemH * rowsBelowDockSetting - (int) (8 * density));
         if (grid.getPaddingTop() == want) return true;
         grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
         return false;
@@ -1458,6 +1498,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     // ---- top bar ---------------------------------------------------------------------------------
 
+    /** Date from the reference is above clock, with genuine Malaysian day/month text. */
+    private void updateCustomDate() {
+        TextView line = findViewById(R.id.date);
+        if (line == null) return;
+        java.text.SimpleDateFormat df = new java.text.SimpleDateFormat(
+                "EEEE   |   dd MMM yyyy", Locale.ENGLISH);
+        df.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
+        String value = df.format(new java.util.Date());
+        android.text.SpannableString styled = new android.text.SpannableString(value);
+        int dayEnd = value.indexOf("   |");
+        if (dayEnd > 0) {
+            styled.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                    0, dayEnd, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        line.setText(styled);
+    }
+
+    @Override
+    public void onAllAppsPressed() {
+        // Reuse the launcher app grid: navigate to the first application below the dock.
+        if (adapter != null && adapter.getItemCount() > COLUMNS) focusTile(COLUMNS);
+    }
+
     private void updateShamsiDate() {
         if (shamsi) shamsiDate.setText(Shamsi.today());
     }
@@ -1521,6 +1584,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             btnWifi.setText(text);
         }
         btnWifi.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, 0, 0, 0);
+        btnWifi.setText(""); // Reference uses Wi-Fi glyph only; click still opens network settings.
     }
 
     /** The network pill opens the VPN app when one is configured and installed, otherwise Wi-Fi settings. */
@@ -1557,7 +1621,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 }
             }
         }
-        btnInputs.setVisibility(any ? View.VISIBLE : View.GONE);
+        btnInputs.setVisibility(View.GONE); // Match reference: only Wi-Fi and Settings on top.
     }
 
     /** The Live TV app's launch intent: its leanback entry point, or the configured action if it has none. */

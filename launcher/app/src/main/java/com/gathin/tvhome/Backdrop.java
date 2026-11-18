@@ -33,8 +33,8 @@ final class Backdrop {
      * itself a blur, so this sets a floor on the softness: an eighth was too soft to tune down.
      */
     static final int SCALE = 2;
-    /** Box radius and passes at the small size: about 4px of softening on screen. */
-    private static final int RADIUS = 2;
+    /** Softer background diffusion for custom glass; generated once off-thread per wallpaper. */
+    private static final int RADIUS = 4;
     private static final int PASSES = 2;
 
     private static Bitmap blurred;
