@@ -917,7 +917,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final String label = placeName != null ? placeName : adapter.labelAt(position);
         final String desc = placeName != null ? placeText : "";
         final String where = placeName != null ? placeCountry : "";
-        int color = adapter.ambientColorAt(position);
+        // V7.6 keeps the background illumination stable between dock apps;
+        // only each card's crystal light crossfades on DPAD navigation.
+        int color = 0xFF9B79CD;
         heroBottom = dockTopInRoot - HERO_GAP_DP * density;
         float y = heroBottom - heroShelf.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
