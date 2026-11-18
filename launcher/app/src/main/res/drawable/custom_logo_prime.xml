@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- White native 'prime video' TextView is placed above this sharp cyan smile. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="40dp" android:height="40dp"
-    android:viewportWidth="40" android:viewportHeight="40">
-    <!-- Lightweight original Prime Video-inspired play mark, rendered as vectors. -->
-    <path android:fillColor="#FF4ACBFF"
-        android:pathData="M20,3 A17,17 0,1 1,19.99 3 Z" />
-    <path android:fillColor="#FF10243D"
-        android:pathData="M16,11 L16,29 L29,20 Z" />
-    <path android:fillColor="#00000000"
-        android:strokeColor="#FFDDF8FF"
-        android:strokeWidth="1.8"
+    android:width="72dp"
+    android:height="28dp"
+    android:viewportWidth="100"
+    android:viewportHeight="32">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF19C8EF"
+        android:strokeWidth="4.1"
         android:strokeLineCap="round"
-        android:pathData="M8,29 C16,35 27,35 32,28" />
+        android:pathData="M7,8 C34,30 69,27 88,10" />
+    <path
+        android:fillColor="#FF19C8EF"
+        android:pathData="M76,8 C82,6 90,5 94,5 C95,5 95,7 94,9 L91,20 L87,20 L88,12 C83,12 80,13 76,14 Z" />
 </vector>
