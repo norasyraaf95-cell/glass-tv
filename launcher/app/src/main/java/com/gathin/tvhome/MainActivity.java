@@ -284,12 +284,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         android.content.SharedPreferences custom = getSharedPreferences("custom_v1", MODE_PRIVATE);
         boolean windy = custom.getBoolean("windy_clouds", true);
         cloudMotion.setCloudsEnabled(windy);
-        customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video belum ada" : (windy ? "WINDY · ON" : "WINDY · OFF"));
+        customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video unavailable" : (windy ? "WINDY · ON" : "WINDY · OFF"));
         findViewById(R.id.customWeatherCard).setOnClickListener(v -> {
             boolean next = !custom.getBoolean("windy_clouds", true);
             custom.edit().putBoolean("windy_clouds", next).apply();
             cloudMotion.setCloudsEnabled(next);
-            customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video belum ada" : (next ? "WINDY · ON" : "WINDY · OFF"));
+            customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video unavailable" : (next ? "WINDY · ON" : "WINDY · OFF"));
         });
         // The tiles' entrance plays once per TV boot. Android reclaims the launcher during long stays
         // in big apps; starting again then is a return to Home, not a first launch.
@@ -917,7 +917,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final String label = placeName != null ? placeName : adapter.labelAt(position);
         final String desc = placeName != null ? placeText : "";
         final String where = placeName != null ? placeCountry : "";
-        int color = adapter.ambientColorAt(position);
+        // The approved Liquid Crystal home has a stationary wallpaper / room tint:
+        // do not animate a different full-screen ambient colour at every DPAD press.
+        int color = position < COLUMNS ? 0xFFB783CF : adapter.ambientColorAt(position);
         heroBottom = dockTopInRoot - HERO_GAP_DP * density;
         float y = heroBottom - heroShelf.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
@@ -1501,7 +1503,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         TextView line = findViewById(R.id.date);
         if (line == null) return;
         java.text.SimpleDateFormat df = new java.text.SimpleDateFormat(
-                "EEEE   |   dd MMM yyyy", new Locale("ms", "MY"));
+                "EEEE   |   dd MMM yyyy", Locale.ENGLISH);
         df.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
         String value = df.format(new java.util.Date());
         android.text.SpannableString styled = new android.text.SpannableString(value);
