@@ -80,6 +80,11 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         // tray behind them. Preserve area geometry for focus coordination only.
         area.set(rect);
 
+        // V7.8 paints its approved floor reflections in a ROOT-level ImageView
+        // using the provided exact source texture. Avoid drawing a second line
+        // or another glow here; duplicated rails were the V7.6 visual regression.
+        if (DockArtwork.get(parent.getContext()).valid) return;
+
         // This is STATIONARY decorative illumination, not a focus indicator.
         // It never changes position/width when the remote is pressed; unlike
         // previous mockup videos, there is no light travelling between apps.
