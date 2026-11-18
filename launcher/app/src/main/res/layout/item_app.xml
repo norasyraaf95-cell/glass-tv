@@ -21,6 +21,21 @@
         android:importantForAccessibility="no"
         android:contentDescription="@null" />
 
+    <!-- Focus-responsive floor light. Drawn behind a fixed card, never translated.
+         Diffuse texture has no line, oval rim or changing geometry. -->
+    <ImageView
+        android:id="@+id/focusReflection"
+        android:layout_width="180dp"
+        android:layout_height="52dp"
+        android:layout_gravity="top|center_horizontal"
+        android:scaleType="fitXY"
+        android:alpha="0"
+        android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no"
+        android:contentDescription="@null" />
+
     <FrameLayout
         android:id="@+id/card"
         android:layout_width="180dp"
