@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -686,6 +687,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         ActivityOptions options = ActivityOptions.makeCustomAnimation(
                 ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
         ctx.startActivity(intent, options.toBundle());
+        if (ctx instanceof Activity) {
+            // Some Android TV 10 builds ignore options on cross-task launches.
+            // This is another best-effort request; never hold the app launch.
+            ((Activity) ctx).overridePendingTransition(
+                    R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+        }
     }
 
     /** Preserve focus identity across Home return without replaying a sweep. */
