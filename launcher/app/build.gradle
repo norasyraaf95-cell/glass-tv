@@ -10,14 +10,14 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 27
-        versionName '2.9.8.4.3-satin-prism-visibility-experimental'
+        versionCode 28
+        versionName '2.9.8.4.4-topbar-parity-experimental'
     }
 
     buildTypes {
         release {
             // Side-by-side preview: never overwrite the already working HOME APK.
-            applicationIdSuffix '.referencev781v843'
+            applicationIdSuffix '.referencev781v844'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
