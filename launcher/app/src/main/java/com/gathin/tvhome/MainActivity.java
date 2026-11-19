@@ -684,7 +684,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /**
      * Source-only A/B test hook. Android's explicit Activity start via ADB:
      * am start -n .../.MainActivity --ei glass_tv_launch_cue_ms 120
-     * 0 = old frame-aware baseline; 120 or 180 = visible prelaunch cue.
+     * 0 = old frame-aware baseline; 120, 180 or 240 = visible prelaunch cue.
      * Only affects this isolated experimental package, never the default Home.
      */
     private void applyLaunchCuePreview(Intent intent) {
