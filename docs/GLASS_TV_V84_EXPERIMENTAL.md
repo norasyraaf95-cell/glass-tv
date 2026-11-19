@@ -8,9 +8,11 @@
 ## Isolation and rollback
 
 - Branch: `glass-tv-v8.4-performance-experimental`
-- Experimental release ID: `com.gathin.tvhome.referencev781v84`
-- Stable reference release ID: `com.gathin.tvhome.referencev781`
-- Experimental version name: `2.9.8.4-satin-prism-performance-experimental`
+- Original first-pass test ID: `com.gathin.tvhome.referencev781v84`
+- **Current V8.4.1 fix-test ID:** `com.gathin.tvhome.referencev781v841` (separate from both installed V7.8.1 and the first experiment)
+- GitHub-hosted debug signing keys may differ between builds. A new test package avoids update-signature conflicts.
+- Stable reference build ID: `com.gathin.tvhome.referencev781`. The user's **installed topbar launcher** is `com.gathin.tvhome.referencev781top` — leave it untouched.
+- Current fix-test version name: `2.9.8.4.1-satin-prism-focus-fix-experimental`
 - Do not set this build as the default HOME launcher.
 - To roll back, simply open the already installed V7.8.1 launcher;
   uninstalling the experimental package does not uninstall the stable package.
@@ -27,7 +29,12 @@ For an exact visual comparison, copy the owner's original, unmodified assets int
 the *experimental* package external files directory after the experimental APK
 has been installed:
 
-`/sdcard/Android/data/com.gathin.tvhome.referencev781v84/files/`
+`/sdcard/Android/data/com.gathin.tvhome.referencev781v841/files/`
+
+The user's original assets currently exist at
+`/sdcard/Android/data/com.gathin.tvhome.referencev781top/files/`, and were
+also copied into the first experimental package. Copy from either known source;
+do not regenerate any artwork.
 
 Required originals:
 
@@ -55,14 +62,18 @@ as a valid V8.4-versus-V7.8.1 comparison.
 - Existing native OK launch stays synchronous; short tactile feedback is
   best-effort and cannot delay or force another app's Android transition.
 - Quiet return focus, no repeating directional sweep on Back.
+- V8.4.1: restore-focus seeding after Home, no 2.5-second sweep expiry, diagnostic `GlassTV.V84` logcat events.
+- V8.4.1: requests Android's 180ms app enter/launcher exit alpha transition via `ActivityOptions`; app launches immediately with no artificial 180ms delay.
 - Event-only animators, no idle loops, no live blur/texture decode in frame draw.
 - Respects existing `reduced_motion` configuration and experimental
   `satin_v84.enabled` preference (default true only in this test package).
 
 ## Not yet guaranteed by this implementation
 
-- The browser's full-screen `Silk Dissolve 180ms` is a visual reference.
-  Android and the target application own the real activity transition.
+- The browser's guaranteed full-screen `Silk Dissolve 180ms` is a visual reference.
+  V8.4.1 requests a 180ms Android activity transition, but Android TV firmware
+  or the destination app can override/disable it. Do not promise matching
+  results without a physical-TV test.
 - No measured automatic FPS/frame-jank governor has been installed;
   rapid-input shedding and `reduced_motion` are the current fallbacks.
 - No Motion Studio settings UI, simulated TV screensaver or optional click sound.
