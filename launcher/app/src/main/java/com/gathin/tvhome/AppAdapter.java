@@ -147,6 +147,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private long previousDockAtMs;
     private View previousDockCard;
     private SatinLightBridge satinBridge;
+    private SatinPrismMotion activeSatinMotion;
     private boolean suppressNextDockSweep = true;
     private final List<Entry> items = new ArrayList<>();
     /** The order someone arranged the tiles in, by key (see {@link #keyAt}); empty until they do. */
@@ -565,6 +566,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     public void onViewRecycled(@NonNull Holder h) {
         h.card.animate().cancel();
         h.satinMotion.stop();
+        if (activeSatinMotion == h.satinMotion) activeSatinMotion = null;
         h.name.animate().cancel();
         h.syncLight(0f);
         h.dockGlass.stopFocus();
@@ -667,11 +669,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     void suppressNextDockSweep() {
         suppressNextDockSweep = true;
         if (satinBridge != null) satinBridge.stop();
+        if (activeSatinMotion != null) activeSatinMotion.stop();
     }
 
     /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
     void suspendSatinEffects() {
         suppressNextDockSweep();
+        activeSatinMotion = null;
         previousDockFocus = -1;
         previousDockCard = null;
     }
@@ -684,6 +688,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         boolean moving = !suppressNextDockSweep && previousDockFocus >= 0
                 && previousDockFocus != position && interval < 2500L;
         if (satinBridge != null) satinBridge.stop();
+        if (activeSatinMotion != null && activeSatinMotion != h.satinMotion) {
+            activeSatinMotion.stop();
+        }
+        activeSatinMotion = h.satinMotion;
         if (moving && interval >= 145L) {
             h.satinMotion.playSweep(position > previousDockFocus ? 1 : -1);
             if (previousDockCard != null && previousDockCard.isAttachedToWindow()
