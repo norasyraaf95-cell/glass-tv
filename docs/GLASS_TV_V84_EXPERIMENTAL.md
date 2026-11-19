@@ -11,10 +11,11 @@
 - Original first-pass test ID: `com.gathin.tvhome.referencev781v84`
 - Previous V8.4.1 test ID: `com.gathin.tvhome.referencev781v841`
 - V8.4.2 test ID: `com.gathin.tvhome.referencev781v842`
-- **Current V8.4.3 visibility-test ID:** `com.gathin.tvhome.referencev781v843` (does not replace stable or earlier experiments)
+- V8.4.3 visibility-test ID: `com.gathin.tvhome.referencev781v843`
+- **Current V8.4.4 topbar-parity test ID:** `com.gathin.tvhome.referencev781v844` (does not replace stable or earlier experiments)
 - GitHub-hosted debug signing keys may differ between builds. A new test package avoids update-signature conflicts.
 - Stable reference build ID: `com.gathin.tvhome.referencev781`. The user's **installed topbar launcher** is `com.gathin.tvhome.referencev781top` — leave it untouched.
-- Current fix-test version name: `2.9.8.4.3-satin-prism-visibility-experimental`
+- Current fix-test version name: `2.9.8.4.4-topbar-parity-experimental`
 - Do not set this build as the default HOME launcher.
 - To roll back, simply open the already installed V7.8.1 launcher;
   uninstalling the experimental package does not uninstall the stable package.
@@ -31,7 +32,7 @@ For an exact visual comparison, copy the owner's original, unmodified assets int
 the *experimental* package external files directory after the experimental APK
 has been installed:
 
-`/sdcard/Android/data/com.gathin.tvhome.referencev781v843/files/`
+`/sdcard/Android/data/com.gathin.tvhome.referencev781v844/files/`
 
 The user's original assets currently exist at
 `/sdcard/Android/data/com.gathin.tvhome.referencev781top/files/`, and were
@@ -93,6 +94,40 @@ Before adjusting TV global animation settings, read current state using
 `adb shell settings get global window_animation_scale`, and
 `adb shell settings get global animator_duration_scale`.
 Do not change any values without knowing and retaining their original values.
+
+## V8.4.4: restore INSTALLED topbar parity (2026-11-19)
+
+The user's actual installed Home variant is
+`com.gathin.tvhome.referencev781top` (branch
+`glass-tv-v781-floating-prism-topbar-test`), **not** the earlier
+`glass-tv-v7.8.1-synced-light-handoff` source alone.
+
+Direct source comparison revealed V8.4.3 lost:
+- Original `FloatingPrismTopBarDrawable`: two **static** translucent widget
+  skins `floating_prism_prayer.webp` and `floating_prism_weather.webp`
+  were present in the copied files but ignored by V8.4.3.
+- Visible short Malaysia date above clock (formerly hidden; different format).
+- Asset-installer allowlist for those two skins.
+
+V8.4.4 restores those exact pieces from the topbar branch.
+Hash comparison confirms the original `FloatingPrismTopBarDrawable.java`,
+`activity_main.xml`, `ShahAlamWidgets.java` and `WindyCloudView.java`
+match the user's installed topbar branch in source. `MainActivity.java`
+includes the corresponding widget/date logic merged with V8.4 optical motion.
+The dynamic prayer/weather code is unchanged, but its Android
+SharedPreferences cache is per-package. During first run it may need to fetch
+fresh results or show placeholders until the network responds. Never copy
+private app data with root or modify the original install.
+
+Before visual testing V8.4.4, ensure both skins, original dock WebPs,
+`wallpaper.jpg` and `config.json` are copied **unchanged** from the user's
+`referencev781top` external files folder to the new V8.4.4 external files
+folder. Never accept fallback premium glass as matching the installed topbar.
+Confirm Date, Prayer Times pink active-period highlight, Weather live values,
+Weather OK toggle/windy cloud, five dock tiles, app mappings and return focus
+all behave as the installed variant.
+
+No claims of physical-TV visual identity or performance are made by CI alone.
 
 ## Implemented as first experimental pass
 
