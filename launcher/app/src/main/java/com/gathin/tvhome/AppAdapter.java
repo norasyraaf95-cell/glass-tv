@@ -153,6 +153,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private SatinPrismMotion activeSatinMotion;
     /** A bounded one-frame cue handoff; one pending third-party launch at a time. */
     private final FrameCueHandoff frameCueHandoff = new FrameCueHandoff();
+    private long lastSmartTubeClickAtMs = -1L;
     private boolean suppressNextDockSweep = true;
     private final List<Entry> items = new ArrayList<>();
     /** The order someone arranged the tiles in, by key (see {@link #keyAt}); empty until they do. */
@@ -545,6 +546,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> {
             if (frameCueHandoff.isPending()) return; // Ignore double-OK during frame handoff.
+            if ("org.smarttube.stable".equals(e.pkg)) {
+                long now = SystemClock.uptimeMillis();
+                if (!SatinLaunchPolicy.acceptNewPress(lastSmartTubeClickAtMs, now)) {
+                    Log.i("GlassTV.V846", "SmartTube repeat press suppressed");
+                    return;
+                }
+                lastSmartTubeClickAtMs = now;
+            }
             // The original click effect remains non-blocking except for opt-in SmartTube frame handoff.
             if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid
                     && !h.satinMotion.isClickPlaying()) {
