@@ -12,11 +12,15 @@ public final class SatinMotionPolicyTest {
         assertTrue(SatinMotionPolicy.shouldSweep(1, 2, false, 300000L));
     }
 
-    @Test public void fastRepeatedRemotePressesDoNotQueueReflection() {
-        assertFalse(SatinMotionPolicy.shouldSweep(1, 2, false, 0L));
-        assertFalse(SatinMotionPolicy.shouldSweep(1, 2, false, 80L));
-        assertFalse(SatinMotionPolicy.shouldSweep(1, 2, false, 144L));
+    @Test public void fastRepeatedRemotePressesRetargetInsteadOfDisappear() {
+        assertTrue(SatinMotionPolicy.shouldSweep(1, 2, false, 0L));
+        assertTrue(SatinMotionPolicy.shouldSweep(2, 1, false, 80L));
+        assertTrue(SatinMotionPolicy.shouldSweep(1, 2, false, 144L));
         assertTrue(SatinMotionPolicy.shouldSweep(1, 2, false, 145L));
+        assertTrue(SatinMotionPolicy.isRapid(0L));
+        assertTrue(SatinMotionPolicy.isRapid(144L));
+        assertFalse(SatinMotionPolicy.isRapid(145L));
+        assertFalse(SatinMotionPolicy.shouldSweep(1, 2, false, -1L));
     }
 
     @Test public void sameTileAndFirstFocusDoNotAnimate() {
