@@ -82,11 +82,12 @@ final class SatinPrismMotion extends Drawable {
         }
     }
 
-    void playSweep(int direction) {
+    void playSweep(int direction, boolean rapid) {
         // Focus illumination lands first; this sweep settles alongside
         // the Satin Light Bridge without delaying navigation.
         animator.setInterpolator(OPTICAL_EASE);
-        start(SWEEP, direction, SatinTiming.OPTICAL_MOTION_MS);
+        start(SWEEP, direction, rapid ? SatinTiming.RAPID_OPTICAL_MOTION_MS
+                : SatinTiming.OPTICAL_MOTION_MS);
     }
 
     void playClick() {
