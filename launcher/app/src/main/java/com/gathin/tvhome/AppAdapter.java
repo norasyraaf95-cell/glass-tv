@@ -756,6 +756,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
     void suspendSatinEffects() {
         frameCueHandoff.cancel();
+        // A genuinely completed app handoff ends the repeat-press window.
+        // Returning to Home must allow SmartTube to be opened again immediately.
+        lastSmartTubeClickAtMs = -1L;
         suppressNextDockSweep();
         activeSatinMotion = null;
         previousDockFocus = -1;
