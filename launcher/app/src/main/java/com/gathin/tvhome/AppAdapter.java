@@ -153,6 +153,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private SatinPrismMotion activeSatinMotion;
     /** A bounded one-frame cue handoff; one pending third-party launch at a time. */
     private final FrameCueHandoff frameCueHandoff = new FrameCueHandoff();
+    /** V8.4.7 experimental visual choreography; scoped to Home's root overlay. */
+    private final PremiumLaunchCue premiumLaunchCue;
     private long lastSmartTubeClickAtMs = -1L;
     private boolean suppressNextDockSweep = true;
     private final List<Entry> items = new ArrayList<>();
@@ -170,6 +172,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.reducedMotion = cfg.reducedMotion;
+        View rootView = ctx instanceof Activity ? ((Activity) ctx).findViewById(R.id.root) : null;
+        premiumLaunchCue = rootView instanceof ViewGroup
+                ? new PremiumLaunchCue((ViewGroup) rootView) : null;
         // Experimental branch only; existing reduced_motion and an explicit off switch win.
         this.satinEnabled = !cfg.reducedMotion
                 && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
@@ -545,7 +550,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.card.setNextFocusUpId(position == dockSize - 1
                 ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> {
-            if (frameCueHandoff.isPending()) return; // Ignore double-OK during frame handoff.
+            if (frameCueHandoff.isPending()
+                    || (premiumLaunchCue != null && premiumLaunchCue.isPending())) return;
             if ("org.smarttube.stable".equals(e.pkg)) {
                 long now = SystemClock.uptimeMillis();
                 if (!SatinLaunchPolicy.acceptNewPress(lastSmartTubeClickAtMs, now)) {
@@ -554,7 +560,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 }
                 lastSmartTubeClickAtMs = now;
             }
-            // The original click effect remains non-blocking except for opt-in SmartTube frame handoff.
+            // Keep the original silver key-down effect; the optional V8.4.7
+            // prelaunch animation is only activated for the SmartTube dock tile.
             if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid
                     && !h.satinMotion.isClickPlaying()) {
                 // Touch/accessibility clicks without a preceding DPAD_CENTER down.
@@ -721,8 +728,17 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 && DockArtwork.get(ctx).valid
                 && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
                         .getBoolean("frame_cue_handoff", true);
-        if (afterFrame) frameCueHandoff.afterCueFrame(sourceCard, startNow);
-        else startNow.run();
+        if (afterFrame) {
+            int cueMs = LaunchCuePolicy.normalize(
+                    ctx.getSharedPreferences("satin_v847", Context.MODE_PRIVATE)
+                            .getInt("launch_cue_ms", LaunchCuePolicy.DEFAULT_MS));
+            // 0ms preserves the V8.4.6 64ms frame-commit baseline for A/B.
+            if (cueMs != LaunchCuePolicy.BASELINE_MS && premiumLaunchCue != null) {
+                premiumLaunchCue.play(sourceCard, cueMs, startNow);
+            } else {
+                frameCueHandoff.afterCueFrame(sourceCard, startNow);
+            }
+        } else startNow.run();
     }
 
     /** Preserve focus identity across Home return without replaying a sweep. */
@@ -746,6 +762,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         Log.i("GlassTV.V84", "Seed focused dock tile=" + position);
     }
 
+    /** Cancel a pending SmartTube cue when HOME is pressed before launch. */
+    void cancelPendingLaunchCue() {
+        frameCueHandoff.cancel();
+        if (premiumLaunchCue != null) premiumLaunchCue.cancel();
+    }
+
     /** Prevents a stale sweep after returning from a third-party app or top widgets. */
     void suppressNextDockSweep() {
         suppressNextDockSweep = true;
@@ -756,6 +778,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
     void suspendSatinEffects() {
         frameCueHandoff.cancel();
+        if (premiumLaunchCue != null) premiumLaunchCue.cancel();
         // A genuinely completed app handoff ends the repeat-press window.
         // Returning to Home must allow SmartTube to be opened again immediately.
         lastSmartTubeClickAtMs = -1L;
@@ -975,6 +998,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             });
 
             card.setOnFocusChangeListener((view, focused) -> {
+                // Moving focus during the 120/180ms prelaunch must abort
+                // the pending SmartTube launch, not launch the old tile.
+                if (!focused && owner.premiumLaunchCue != null
+                        && owner.premiumLaunchCue.isPending()) {
+                    owner.premiumLaunchCue.cancel();
+                    owner.lastSmartTubeClickAtMs = -1L;
+                }
                 int cardIndex = getBindingAdapterPosition();
                 boolean inDock = cardIndex >= 0 && cardIndex < 5;
                 float scale = focused && !inDock ? FOCUS_SCALE : 1f;
