@@ -93,6 +93,17 @@ final class ShahAlamWidgets {
     void resume() {
         active = true;
         handler.removeCallbacks(tick);
+        // A verified API JSON may arrive after a previous failed attempt.
+        // Pick it up immediately on Home return instead of waiting for retry.
+        String month = format("yyyy-MM", new Date());
+        if (!month.equals(cache.getString("prayer_month", ""))
+                && verifiedPrayerFile != null && verifiedPrayerFile.isFile()) {
+            network.execute(() -> {
+                if (!destroyed && restoreVerifiedBackup(month)) {
+                    handler.post(() -> { if (active) paintCached(); });
+                }
+            });
+        }
         tick.run();
     }
 
