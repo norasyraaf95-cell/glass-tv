@@ -1,0 +1,57 @@
+name: Glass TV V8.4.6 — isolated APK candidate
+
+on:
+  push:
+    branches:
+      - glass-tv-v846-motion-handoff-development
+    paths:
+      - '.github/workflows/v846-candidate-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    name: Verify and package V8.4.6 (no device install)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source and regression tests
+        run: python3 -m unittest discover -s tests -v
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Unit tests and assemble candidate release
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      - name: Verify APK identity and calculate SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="launcher/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" | tee /tmp/v846-badging.txt
+          grep -F "package: name='com.gathin.tvhome.referencev781v846' versionCode='30' versionName='2.9.8.4.6-motion-handoff-prototype'" /tmp/v846-badging.txt
+          sha256sum "$APK" | tee /tmp/v846-sha256.txt
+          cp "$APK" GlassTV_V8.4.6_experimental.apk
+          cp /tmp/v846-sha256.txt GlassTV_V8.4.6_sha256.txt
+      - name: Upload isolated candidate (no install, no HOME changes)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlassTV-V8.4.6-isolated-candidate
+          path: |
+            GlassTV_V8.4.6_experimental.apk
+            GlassTV_V8.4.6_sha256.txt
+          if-no-files-found: error
+          retention-days: 30
