@@ -11,7 +11,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.DecelerateInterpolator;
+import android.view.animation.PathInterpolator;
 
 import androidx.annotation.NonNull;
 
@@ -24,7 +24,7 @@ final class SatinLightBridge extends Drawable {
     private final Rect fromRect = new Rect(), toRect = new Rect();
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-    private float startX, endX, y, progress;
+    private float startX, endX, y, progress, segment;
     private boolean active;
 
     SatinLightBridge(ViewGroup host) {
@@ -32,8 +32,9 @@ final class SatinLightBridge extends Drawable {
         paint.setColor(0xFFF3F9FF);
         paint.setStrokeWidth(Math.max(.7f, .85f * host.getResources().getDisplayMetrics().density));
         paint.setStrokeCap(Paint.Cap.ROUND);
-        animator.setDuration(240L);
-        animator.setInterpolator(new DecelerateInterpolator());
+        animator.setDuration(270L);
+        // Zero velocity at both ends; no harsh deceleration at the destination.
+        animator.setInterpolator(new PathInterpolator(.42f, 0f, .58f, 1f));
         animator.addUpdateListener(a -> {
             progress = (float) a.getAnimatedValue();
             invalidateSelf();
@@ -58,7 +59,11 @@ final class SatinLightBridge extends Drawable {
         boolean movingRight = fromRect.centerX() < toRect.centerX();
         startX = movingRight ? fromRect.right : fromRect.left;
         endX = movingRight ? toRect.left : toRect.right;
-        if (Math.abs(endX - startX) < 1f) return;
+        float gap = Math.abs(endX - startX);
+        // The glint is restricted to the empty gap; never draw over icons or
+        // the existing pink focus border. Skip near-touching cards entirely.
+        if (gap < 2f) return;
+        segment = Math.min(gap * .30f, 8f * host.getResources().getDisplayMetrics().density);
         y = toRect.top + toRect.height() * .16f;
         setBounds(0, 0, host.getWidth(), host.getHeight());
         progress = 0f;
@@ -75,12 +80,16 @@ final class SatinLightBridge extends Drawable {
 
     @Override public void draw(@NonNull Canvas canvas) {
         if (!active) return;
-        // Retain the thin silver connector through the gap, then decay.
-        // No change to static glass, pink rim, tile positions or idle state.
-        float opacity = progress < .18f ? progress / .18f
-                : (progress < .67f ? 1f : (1f-progress) / .33f);
-        paint.setAlpha(Math.round(255f * .42f * opacity));
-        canvas.drawLine(startX, y, startX+(endX-startX)*progress, y, paint);
+        // A SMALL satin glint travels across the empty gap, never an
+        // expanding white line. Easing keeps it gentle on low-frame-rate TVs.
+        float fade = (float) Math.sin(Math.PI * progress);
+        float center = startX + (endX - startX) * progress;
+        float left = Math.min(startX, endX), right = Math.max(startX, endX);
+        float a = Math.max(left, center - segment * .5f);
+        float b = Math.min(right, center + segment * .5f);
+        if (b <= a) return;
+        paint.setAlpha(Math.round(255f * .42f * fade));
+        canvas.drawLine(a, y, b, y, paint);
     }
     @Override public void setAlpha(int alpha) {}
     @Override public void setColorFilter(ColorFilter filter) {}
