@@ -671,8 +671,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 if (stable == null) stable = ctx.getPackageManager()
                         .getLaunchIntentForPackage("org.smarttube.stable");
                 if (stable != null) {
-                    stable.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                            | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                    // Match the app's own published launch intent without forcing a
+                    // task reset. SmartTube decides which existing screen to show.
+                    stable.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startWithSilk(stable, sourceCard, inDock, e.label);
                     return;
                 }
@@ -683,7 +684,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         Intent i = new Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
                 .setComponent(e.component)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                        | ("org.smarttube.stable".equals(e.pkg)
+                                ? 0 : Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED));
         try {
             startWithSilk(i, sourceCard, inDock && "org.smarttube.stable".equals(e.pkg), e.label);
         } catch (Exception ex) {
@@ -702,6 +705,27 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
      * existing immediate-launch path stays intact.
      */
     private void startWithSilk(Intent intent, View sourceCard, boolean frameEligible, String appLabel) {
+        // V8.5.1 isolated A/B test: SmartTube's dock tile launches immediately.
+        // Keep SatinPrismMotion's key-down press feedback, but do not wait for
+        // a 240ms PremiumLaunchCue or a frame-commit handoff. Android owns the
+        // third-party app window; this launcher cannot force SmartTube to fade.
+        // No ActivityOptions / overridePendingTransition on this path.
+        if (frameEligible && ctx.getSharedPreferences("satin_v851", Context.MODE_PRIVATE)
+                .getBoolean("smarttube_immediate", true)) {
+            long dispatchedAt = SystemClock.uptimeMillis();
+            try {
+                Log.i("GlassTV.V851", "SmartTube immediate startActivity requested");
+                ctx.startActivity(intent);
+                Log.i("GlassTV.V851", "SmartTube startActivity returned elapsedMs="
+                        + (SystemClock.uptimeMillis() - dispatchedAt));
+            } catch (RuntimeException ex) {
+                Log.w("GlassTV.V851", "SmartTube immediate launch failed", ex);
+                lastSmartTubeClickAtMs = -1L;
+                Toast.makeText(ctx, ctx.getString(R.string.cant_open, appLabel),
+                        Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
         Runnable startNow = () -> {
             try {
                 if (!satinEnabled) {
