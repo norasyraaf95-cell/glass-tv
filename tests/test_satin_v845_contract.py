@@ -47,7 +47,7 @@ class SatinV845ContractTest(unittest.TestCase):
         self.assertIn('"floating_prism_prayer.webp"', code)
         self.assertIn('"floating_prism_weather.webp"', code)
         gradle = GRADLE.read_text(encoding="utf-8")
-        self.assertIn("applicationIdSuffix '.referencev781v846'", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v847'", gradle)
 
 
 if __name__ == "__main__":
