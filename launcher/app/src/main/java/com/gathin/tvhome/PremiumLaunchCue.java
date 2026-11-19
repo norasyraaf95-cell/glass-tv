@@ -1,8 +1,5 @@
 package com.gathin.tvhome;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -12,10 +9,11 @@ import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
-import android.os.SystemClock;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.Choreographer;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.PathInterpolator;
@@ -23,39 +21,41 @@ import android.view.animation.PathInterpolator;
 import androidx.annotation.NonNull;
 
 /**
- * V8.4.7 controlled, launcher-owned prelaunch cue.
+ * V8.4.7 launcher-owned SmartTube prelaunch animation.
  *
- * One short event-driven animator: gentle compression of the selected card,
- * a low-alpha darkening of everything EXCEPT that card, and a narrow silver
- * outline. No wallpaper blur, atlas edits, texture decoding or idle frames.
+ * Uses Choreographer + uptime, NOT ValueAnimator: the user's Android 10 TV
+ * has global animator_duration_scale=0.5, which would halve a 120/180ms
+ * ValueAnimator cue. These modes must represent measured real elapsed time
+ * so A/B comparisons are meaningful without touching Android settings.
  *
- * Only SmartTube on the fixed dock uses this during the A/B experiment.
- * A 120/180ms launch delay is intentional and explicitly testable; it is NOT
- * a guarantee of cross-application animation once Android starts SmartTube.
+ * 120ms/180ms visually compress the selected card, dim the rest of Home and
+ * briefly trace a silver edge before handing control to Android. No blur,
+ * bitmap allocations or wallpaper changes on any frame.
  */
 final class PremiumLaunchCue {
     private static final String TAG = "GlassTV.V847";
     private static final float PRESSED_SCALE = .978f;
     private static final float DIM_ALPHA = .17f;
-    private static final long STALL_GRACE_MS = 64L;
+    static final long STALL_GRACE_MS = 64L;
 
     private final ViewGroup host;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final float density;
+    private final Choreographer choreographer = Choreographer.getInstance();
+    private final PathInterpolator easing = new PathInterpolator(.20f, .0f, .28f, 1f);
     private final DimScrim scrim;
 
     private View pressedCard;
-    private ValueAnimator animator;
     private Runnable pendingLaunch;
     private Runnable deadline;
+    private Choreographer.FrameCallback frameCallback;
     private float savedScaleX = 1f, savedScaleY = 1f;
     private long startedAt;
+    private int selectedDurationMs;
     private boolean overlayAttached;
 
     PremiumLaunchCue(ViewGroup host) {
         this.host = host;
-        density = host.getResources().getDisplayMetrics().density;
-        scrim = new DimScrim(density);
+        scrim = new DimScrim(host.getResources().getDisplayMetrics().density);
     }
 
     boolean isPending() {
@@ -63,8 +63,8 @@ final class PremiumLaunchCue {
     }
 
     /**
-     * Launches normally if the UI cannot be animated. Returns false only when
-     * another handoff is already pending, to suppress duplicate OK events.
+     * Return false only when a previous launch is pending. On invalid UI,
+     * fail safe to immediate launch rather than losing the remote OK press.
      */
     boolean play(View card, int durationMs, Runnable launch) {
         if (isPending()) return false;
@@ -72,16 +72,16 @@ final class PremiumLaunchCue {
                 || host.getWidth() <= 0 || host.getHeight() <= 0
                 || !LaunchCuePolicy.isSupported(durationMs)
                 || durationMs == LaunchCuePolicy.BASELINE_MS) {
-            Log.i(TAG, "Animated cue unavailable; launching immediately");
+            Log.i(TAG, "No animatable card; immediate SmartTube launch");
             launch.run();
             return true;
         }
 
-        final Rect mapped = new Rect(0, 0, card.getWidth(), card.getHeight());
+        Rect mapped = new Rect(0, 0, card.getWidth(), card.getHeight());
         try {
             host.offsetDescendantRectToMyCoords(card, mapped);
-        } catch (IllegalArgumentException ex) {
-            Log.w(TAG, "Launch card is not in Home root; launching immediately", ex);
+        } catch (IllegalArgumentException error) {
+            Log.w(TAG, "Card is not a Home descendant; immediate launch", error);
             launch.run();
             return true;
         }
@@ -91,6 +91,7 @@ final class PremiumLaunchCue {
         savedScaleY = card.getScaleY();
         pendingLaunch = launch;
         startedAt = SystemClock.uptimeMillis();
+        selectedDurationMs = durationMs;
 
         scrim.place(mapped, host.getWidth(), host.getHeight());
         scrim.setProgress(0f);
@@ -98,80 +99,63 @@ final class PremiumLaunchCue {
             host.getOverlay().add(scrim);
             overlayAttached = true;
         } catch (RuntimeException error) {
-            // An OEM overlay failure cannot prevent SmartTube from launching.
-            Log.w(TAG, "Cannot draw premium launch cue; immediate handoff", error);
+            Log.w(TAG, "Overlay not supported by OEM; immediate launch", error);
             cancel();
             launch.run();
             return true;
         }
 
-        final ValueAnimator running = ValueAnimator.ofFloat(0f, 1f);
-        animator = running;
-        running.setDuration(durationMs);
-        running.setInterpolator(new PathInterpolator(.20f, .0f, .28f, 1f));
-        running.addUpdateListener(a -> {
-            if (animator != running) return;
-            float p = (float) a.getAnimatedValue();
-            // Only the selected card is compressed; logos and artwork stay intact.
+        frameCallback = frameTimeNanos -> {
+            if (!isPending()) return;
+            long elapsed = Math.max(0L, SystemClock.uptimeMillis() - startedAt);
+            float fraction = Math.min(1f, (float) elapsed / selectedDurationMs);
+            float eased = easing.getInterpolation(fraction);
             if (pressedCard != null) {
-                pressedCard.setScaleX(savedScaleX * (1f - (1f - PRESSED_SCALE) * p));
-                pressedCard.setScaleY(savedScaleY * (1f - (1f - PRESSED_SCALE) * p));
+                float scale = 1f - (1f - PRESSED_SCALE) * eased;
+                pressedCard.setScaleX(savedScaleX * scale);
+                pressedCard.setScaleY(savedScaleY * scale);
             }
-            scrim.setProgress(p);
-        });
-        running.addListener(new AnimatorListenerAdapter() {
-            private boolean wasCancelled;
-
-            @Override public void onAnimationCancel(Animator animation) {
-                wasCancelled = true;
-            }
-
-            @Override public void onAnimationEnd(Animator animation) {
-                if (wasCancelled || animator != running || pendingLaunch != launch) return;
-                finishCue("animation-complete");
-            }
-        });
-        // If the OEM fails to finish the animator, do not trap the OK press.
+            scrim.setProgress(eased);
+            if (fraction >= 1f) finishCue("animation-complete");
+            else choreographer.postFrameCallback(frameCallback);
+        };
         deadline = () -> finishCue("bounded-fallback");
         handler.postDelayed(deadline, durationMs + STALL_GRACE_MS);
-        Log.i(TAG, "Premium SmartTube prelaunch cue " + durationMs + "ms");
-        running.start();
+        choreographer.postFrameCallback(frameCallback);
+        Log.i(TAG, "Premium SmartTube cue requested durationMs=" + durationMs
+                + " timing=Choreographer");
         return true;
     }
 
-    /**
-     * Called when Home pauses, user presses HOME again, or the selected
-     * card loses focus. Cancelling must never call a deferred startActivity.
-     */
+    /** Aborting via Home, navigation or onPause must NEVER launch SmartTube. */
     void cancel() {
         pendingLaunch = null;
-        if (deadline != null) handler.removeCallbacks(deadline);
-        deadline = null;
-        ValueAnimator old = animator;
-        animator = null;
-        if (old != null) old.cancel();
+        clearCallbacks();
         clearAppearance();
     }
 
     private void finishCue(String reason) {
-        if (pendingLaunch == null) return;
+        if (!isPending()) return; // Frame and deadline cannot double-launch.
         Runnable action = pendingLaunch;
         pendingLaunch = null;
-        if (deadline != null) handler.removeCallbacks(deadline);
-        deadline = null;
-        ValueAnimator old = animator;
-        animator = null;
-        if (old != null && old.isRunning()) old.cancel();
+        clearCallbacks();
         if (pressedCard != null && pressedCard.isAttachedToWindow()) {
             Log.i(TAG, "Premium cue " + reason + " after "
                     + (SystemClock.uptimeMillis() - startedAt)
                     + "ms; requesting SmartTube launch");
-            // Keep the last cue frame until Home goes into onPause.
+            // Keep the composed frame until Home's onPause to avoid a flash.
             action.run();
         } else {
-            Log.i(TAG, "Cue source detached; not launching stale selection");
+            Log.i(TAG, "Card detached before launch; stale OK abandoned");
             clearAppearance();
         }
+    }
+
+    private void clearCallbacks() {
+        if (deadline != null) handler.removeCallbacks(deadline);
+        deadline = null;
+        if (frameCallback != null) choreographer.removeFrameCallback(frameCallback);
+        frameCallback = null;
     }
 
     private void clearAppearance() {
@@ -204,7 +188,8 @@ final class PremiumLaunchCue {
 
         void place(Rect card, int width, int height) {
             float pad = 3f * density;
-            cardBounds.set(card.left - pad, card.top - pad, card.right + pad, card.bottom + pad);
+            cardBounds.set(card.left - pad, card.top - pad,
+                    card.right + pad, card.bottom + pad);
             cornerRadius = 19f * density + pad;
             exclusion.reset();
             exclusion.addRoundRect(cardBounds, cornerRadius, cornerRadius, Path.Direction.CW);
@@ -218,21 +203,20 @@ final class PremiumLaunchCue {
 
         @Override public void draw(@NonNull Canvas canvas) {
             if (progress <= 0f) return;
-            // API 26+ (app minSdk 26). The focused card remains legible.
             int save = canvas.save();
-            canvas.clipOutPath(exclusion);
-            dim.setColor(Color.argb(Math.round(DIM_ALPHA * 255f * progress), 0, 0, 0));
+            canvas.clipOutPath(exclusion); // minSdk 26
+            dim.setColor(Color.argb(Math.round(DIM_ALPHA * 255f * progress),
+                    0, 0, 0));
             canvas.drawRect(getBounds(), dim);
             canvas.restoreToCount(save);
 
-            // A restrained single silver edge, not a neon or expanded halo.
-            silver.setColor(Color.argb(Math.round(0.43f * 255f * progress),
+            silver.setColor(Color.argb(Math.round(.43f * 255f * progress),
                     241, 248, 255));
             canvas.drawRoundRect(cardBounds, cornerRadius, cornerRadius, silver);
         }
 
         @Override public void setAlpha(int alpha) {}
-        @Override public void setColorFilter(ColorFilter colorFilter) {}
+        @Override public void setColorFilter(ColorFilter filter) {}
         @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 }
