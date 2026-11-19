@@ -9,26 +9,27 @@ JAVA = ROOT / "launcher/app/src/main/java/com/gathin/tvhome"
 class V848CueContractTest(unittest.TestCase):
     def test_distinct_package_not_installed_v847(self):
         gradle = (ROOT / "launcher/app/build.gradle").read_text(encoding="utf-8")
-        self.assertIn("versionCode 32", gradle)
-        self.assertIn("applicationIdSuffix '.referencev781v848'", gradle)
+        self.assertIn("versionCode 33", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v849motion'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v847'", gradle)
 
     def test_visible_but_non_glowing_premium_cue(self):
         cue = (JAVA / "PremiumLaunchCue.java").read_text(encoding="utf-8")
-        self.assertIn("PRESSED_SCALE = .95f", cue)
-        self.assertIn("DIM_ALPHA = .28f", cue)
+        self.assertIn("PRESSED_SCALE = .93f", cue)
+        self.assertIn("DIM_ALPHA = .14f", cue)
         self.assertIn("1.25f", cue)
-        self.assertIn("travellingHighlight", cue)
-        self.assertIn("canvas.drawLine(a, cardBounds.top, b, cardBounds.top,", cue)
-        self.assertIn("Math.sin(Math.PI * sweep)", cue)
+        self.assertNotIn("travellingHighlight", cue)
+        self.assertIn("canvas.drawRoundRect(cardBounds, cornerRadius, cornerRadius, silver)", cue)
+        self.assertNotIn("Math.sin(Math.PI * sweep)", cue)
         self.assertIn("canvas.clipOutPath(exclusion)", cue)
         self.assertNotIn("BlurMaskFilter", cue)
         self.assertNotIn("ValueAnimator.ofFloat(", cue)
 
     def test_180ms_default_and_120ms_variant_preserved(self):
         modes = (JAVA / "LaunchCuePolicy.java").read_text(encoding="utf-8")
-        self.assertIn("DEFAULT_MS = SILK_MS", modes)
+        self.assertIn("DEFAULT_MS = REFINED_MS", modes)
         self.assertIn("SILK_MS = 180", modes)
+        self.assertIn("REFINED_MS = 240", modes)
         self.assertIn("QUICK_MS = 120", modes)
         self.assertIn("BASELINE_MS = 0", modes)
 
