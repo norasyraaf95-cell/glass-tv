@@ -52,11 +52,19 @@ final class FrameCueHandoff {
         startedAt = SystemClock.uptimeMillis();
         frameCallback = () -> main.post(() -> finish("frame-committed"));
         timeout = () -> finish("bounded-fallback");
-        tree.registerFrameCommitCallback(frameCallback);
-        // The already-running key-down/click pulse invalidates its drawable.
-        // Also request a traversal even if the OEM drops that invalidation.
-        cue.postInvalidateOnAnimation();
-        main.postDelayed(timeout, MAX_FRAME_WAIT_MS);
+        try {
+            tree.registerFrameCommitCallback(frameCallback);
+            // The already-running key-down/click pulse invalidates its drawable.
+            // Also request a traversal even if the OEM drops that invalidation.
+            cue.postInvalidateOnAnimation();
+            main.postDelayed(timeout, MAX_FRAME_WAIT_MS);
+        } catch (RuntimeException error) {
+            // Some OEM renderers can reject registration despite acceleration.
+            // Never turn a cosmetic cue into a broken app launch.
+            Log.w(TAG, "Frame callback unavailable; immediate launch", error);
+            clear();
+            launch.run();
+        }
         return true;
     }
 
