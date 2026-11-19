@@ -16,8 +16,8 @@ def read(name):
 class V847PremiumCueContractTest(unittest.TestCase):
     def test_isolated_package_and_version(self):
         gradle = (ROOT / "launcher/app/build.gradle").read_text(encoding="utf-8")
-        self.assertIn("versionCode 33", gradle)
-        self.assertIn("applicationIdSuffix '.referencev781v849motion'", gradle)
+        self.assertIn("versionCode 34", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v850smarttube'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v847'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v846'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v845'", gradle)
