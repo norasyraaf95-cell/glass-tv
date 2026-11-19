@@ -711,11 +711,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 Log.i("GlassTV.V84", "Silk activity transition requested");
                 ActivityOptions options = ActivityOptions.makeCustomAnimation(
                         ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+                // One window transition request only. Combining ActivityOptions
+                // with overridePendingTransition could produce double handoffs.
                 ctx.startActivity(intent, options.toBundle());
-                if (ctx instanceof Activity) {
-                    ((Activity) ctx).overridePendingTransition(
-                            R.anim.satin_silk_enter, R.anim.satin_silk_exit);
-                }
             } catch (RuntimeException ex) {
                 // Once the frame callback runs this exception is asynchronous
                 // to onClick, so handle it here rather than crashing Home.
