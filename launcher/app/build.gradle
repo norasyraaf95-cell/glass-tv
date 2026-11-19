@@ -10,14 +10,14 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 25
-        versionName '2.9.8.4.1-satin-prism-focus-fix-experimental'
+        versionCode 26
+        versionName '2.9.8.4.2-satin-prism-motion-activation-experimental'
     }
 
     buildTypes {
         release {
             // Side-by-side preview: never overwrite the already working HOME APK.
-            applicationIdSuffix '.referencev781v841'
+            applicationIdSuffix '.referencev781v842'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
