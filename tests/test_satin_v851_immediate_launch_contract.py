@@ -19,6 +19,7 @@ class V851ImmediateLaunchTest(unittest.TestCase):
         adapter = src("AppAdapter.java")
         self.assertIn("if (frameEligible && ctx.getSharedPreferences(\"satin_v851\"", adapter)
         block = adapter.split("// V8.5.1 isolated A/B test:", 1)[1].split("Runnable startNow = () -> {",1)[0]
+        block = "\n".join(line for line in block.splitlines() if not line.lstrip().startswith("//"))
         self.assertIn("ctx.startActivity(intent);", block)
         self.assertNotIn("premiumLaunchCue.play", block)
         self.assertNotIn("frameCueHandoff.afterCueFrame", block)
