@@ -1,0 +1,86 @@
+name: Glass TV V8.4.8 — isolated strong cue candidate
+
+on:
+  push:
+    branches:
+      - glass-tv-v848-stronger-premium-launch-cue
+    paths:
+      - '.github/workflows/v848-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Source regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run regression suite
+        run: python3 -m unittest discover -s tests -v
+
+  android:
+    name: Android release unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run Gradle unit tests
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testReleaseUnitTest
+
+  candidate:
+    name: Build and verify isolated APK — no installation
+    needs: [source, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Assemble separate V8.4.8 release package
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+      - name: Verify package and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=launcher/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" | tee /tmp/badging.txt
+          grep -F "package: name='com.gathin.tvhome.referencev781v848' versionCode='32' versionName='2.9.8.4.8-stronger-premium-cue-experimental'" /tmp/badging.txt
+          bytes=$(stat -c %s "$APK")
+          echo "APK bytes: $bytes"
+          test "$bytes" -lt 409600
+          cp "$APK" GlassTV_V8.4.8_stronger_cue.apk
+          sha256sum GlassTV_V8.4.8_stronger_cue.apk > GlassTV_V8.4.8_sha256.txt
+          cat GlassTV_V8.4.8_sha256.txt
+      - name: Publish candidate for optional manual TV A/B test
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlassTV-V8.4.8-stronger-cue-candidate
+          path: |
+            GlassTV_V8.4.8_stronger_cue.apk
+            GlassTV_V8.4.8_sha256.txt
+          retention-days: 30
+          if-no-files-found: error
