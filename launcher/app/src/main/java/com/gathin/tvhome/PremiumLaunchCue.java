@@ -21,7 +21,7 @@ import android.view.animation.PathInterpolator;
 import androidx.annotation.NonNull;
 
 /**
- * V8.4.7 launcher-owned SmartTube prelaunch animation.
+ * V8.4.8 launcher-owned SmartTube prelaunch animation.
  *
  * Uses Choreographer + uptime, NOT ValueAnimator: the user's Android 10 TV
  * has global animator_duration_scale=0.5, which would halve a 120/180ms
@@ -33,9 +33,12 @@ import androidx.annotation.NonNull;
  * bitmap allocations or wallpaper changes on any frame.
  */
 final class PremiumLaunchCue {
-    private static final String TAG = "GlassTV.V847";
-    private static final float PRESSED_SCALE = .978f;
-    private static final float DIM_ALPHA = .17f;
+    private static final String TAG = "GlassTV.V848";
+    // The 2.2% / 17% V8.4.7 press was barely visible on the physical TV.
+    // Stronger, restrained values: enough to read from sofa distance while
+    // retaining the original five WebP cards, pink rim and wallpaper.
+    private static final float PRESSED_SCALE = .95f;
+    private static final float DIM_ALPHA = .28f;
     static final long STALL_GRACE_MS = 64L;
 
     private final ViewGroup host;
@@ -174,6 +177,7 @@ final class PremiumLaunchCue {
     private static final class DimScrim extends Drawable {
         private final Paint dim = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint silver = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint travellingHighlight = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path exclusion = new Path();
         private final RectF cardBounds = new RectF();
         private final float density;
@@ -183,7 +187,10 @@ final class PremiumLaunchCue {
         DimScrim(float density) {
             this.density = density;
             silver.setStyle(Paint.Style.STROKE);
-            silver.setStrokeWidth(Math.max(.8f, density * .8f));
+            silver.setStrokeWidth(Math.max(1f, density * 1.25f));
+            silver.setStrokeCap(Paint.Cap.ROUND);
+            travellingHighlight.setStrokeWidth(Math.max(1f, density * 1.1f));
+            travellingHighlight.setStrokeCap(Paint.Cap.ROUND);
         }
 
         void place(Rect card, int width, int height) {
@@ -210,9 +217,34 @@ final class PremiumLaunchCue {
             canvas.drawRect(getBounds(), dim);
             canvas.restoreToCount(save);
 
-            silver.setColor(Color.argb(Math.round(.43f * 255f * progress),
+            // Readable silver acknowledgement, drawn just around the
+            // selected tile without a second glowing frame or full-screen flash.
+            float rimAlpha = progress < .75f ? progress / .75f : 1f;
+            silver.setColor(Color.argb(Math.round(.74f * 255f * rimAlpha),
                     241, 248, 255));
             canvas.drawRoundRect(cardBounds, cornerRadius, cornerRadius, silver);
+
+            // One short satin glint glides along the upper card edge.
+            // It stays away from the rounded ends and vanishes before launch.
+            // This is a native Canvas line, not GPU blur or a new texture.
+            float sweep = Math.max(0f, Math.min(1f, (progress - .12f) / .68f));
+            float glintFade = (float) Math.sin(Math.PI * sweep);
+            if (sweep > 0f && sweep < 1f) {
+                float edgeInset = cornerRadius + 1.5f * density;
+                float left = cardBounds.left + edgeInset;
+                float right = cardBounds.right - edgeInset;
+                float travel = Math.max(0f, right - left);
+                float center = left + travel * sweep;
+                float halfSegment = Math.min(12f * density, travel * .15f);
+                float a = Math.max(left, center - halfSegment);
+                float b = Math.min(right, center + halfSegment);
+                if (b > a) {
+                    travellingHighlight.setColor(Color.argb(
+                            Math.round(.90f * 255f * glintFade), 247, 251, 255));
+                    canvas.drawLine(a, cardBounds.top, b, cardBounds.top,
+                            travellingHighlight);
+                }
+            }
         }
 
         @Override public void setAlpha(int alpha) {}
