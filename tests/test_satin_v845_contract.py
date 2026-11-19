@@ -15,7 +15,8 @@ class SatinV845ContractTest(unittest.TestCase):
     def test_short_bridge_not_growing_white_line(self):
         code = (JAVA / "SatinLightBridge.java").read_text(encoding="utf-8")
         self.assertIn("new PathInterpolator(.42f, 0f, .58f, 1f)", code)
-        self.assertIn("Math.min(gap * .30f", code)
+        self.assertIn("Math.min(gap * .46f", code)
+        self.assertIn("13f * host.getResources().getDisplayMetrics().density", code)
         self.assertIn("float center = startX + (endX - startX) * progress", code)
         self.assertNotIn("startX+(endX-startX)*progress, y, paint", code)
 
