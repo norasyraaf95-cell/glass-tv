@@ -28,7 +28,7 @@ import androidx.annotation.NonNull;
  * ValueAnimator cue. These modes must represent measured real elapsed time
  * so A/B comparisons are meaningful without touching Android settings.
  *
- * 120ms/180ms visually compress the selected card, dim the rest of Home and
+ * 120ms/180ms/240ms visually compress the selected card, dim the rest of Home and
  * briefly trace a silver edge before handing control to Android. No blur,
  * bitmap allocations or wallpaper changes on any frame.
  */
@@ -37,8 +37,9 @@ final class PremiumLaunchCue {
     // The 2.2% / 17% V8.4.7 press was barely visible on the physical TV.
     // Stronger, restrained values: enough to read from sofa distance while
     // retaining the original five WebP cards, pink rim and wallpaper.
-    private static final float PRESSED_SCALE = .95f;
-    private static final float DIM_ALPHA = .28f;
+    private static final float PRESSED_SCALE = .93f;
+    // Reduce the full-screen darkening that looked like a black flash on Mi TV.
+    private static final float DIM_ALPHA = .14f;
     static final long STALL_GRACE_MS = 64L;
 
     private final ViewGroup host;
@@ -177,7 +178,6 @@ final class PremiumLaunchCue {
     private static final class DimScrim extends Drawable {
         private final Paint dim = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint silver = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Paint travellingHighlight = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Path exclusion = new Path();
         private final RectF cardBounds = new RectF();
         private final float density;
@@ -189,8 +189,6 @@ final class PremiumLaunchCue {
             silver.setStyle(Paint.Style.STROKE);
             silver.setStrokeWidth(Math.max(1f, density * 1.25f));
             silver.setStrokeCap(Paint.Cap.ROUND);
-            travellingHighlight.setStrokeWidth(Math.max(1f, density * 1.1f));
-            travellingHighlight.setStrokeCap(Paint.Cap.ROUND);
         }
 
         void place(Rect card, int width, int height) {
@@ -224,27 +222,8 @@ final class PremiumLaunchCue {
                     241, 248, 255));
             canvas.drawRoundRect(cardBounds, cornerRadius, cornerRadius, silver);
 
-            // One short satin glint glides along the upper card edge.
-            // It stays away from the rounded ends and vanishes before launch.
-            // This is a native Canvas line, not GPU blur or a new texture.
-            float sweep = Math.max(0f, Math.min(1f, (progress - .12f) / .68f));
-            float glintFade = (float) Math.sin(Math.PI * sweep);
-            if (sweep > 0f && sweep < 1f) {
-                float edgeInset = cornerRadius + 1.5f * density;
-                float left = cardBounds.left + edgeInset;
-                float right = cardBounds.right - edgeInset;
-                float travel = Math.max(0f, right - left);
-                float center = left + travel * sweep;
-                float halfSegment = Math.min(12f * density, travel * .15f);
-                float a = Math.max(left, center - halfSegment);
-                float b = Math.min(right, center + halfSegment);
-                if (b > a) {
-                    travellingHighlight.setColor(Color.argb(
-                            Math.round(.90f * 255f * glintFade), 247, 251, 255));
-                    canvas.drawLine(a, cardBounds.top, b, cardBounds.top,
-                            travellingHighlight);
-                }
-            }
+            // The stationary silver rim acknowledges OK; no moving border,
+            // flash animation or additional texture is drawn during the handoff.
         }
 
         @Override public void setAlpha(int alpha) {}
