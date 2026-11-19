@@ -151,6 +151,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private View previousDockCard;
     private SatinLightBridge satinBridge;
     private SatinPrismMotion activeSatinMotion;
+    /** A bounded one-frame cue handoff; one pending third-party launch at a time. */
+    private final FrameCueHandoff frameCueHandoff = new FrameCueHandoff();
     private boolean suppressNextDockSweep = true;
     private final List<Entry> items = new ArrayList<>();
     /** The order someone arranged the tiles in, by key (see {@link #keyAt}); empty until they do. */
@@ -542,14 +544,15 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.card.setNextFocusUpId(position == dockSize - 1
                 ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> {
-            // Feedback is non-blocking: startActivity / All Apps runs in this same click.
+            if (frameCueHandoff.isPending()) return; // Ignore double-OK during frame handoff.
+            // The original click effect remains non-blocking except for opt-in SmartTube frame handoff.
             if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid
                     && !h.satinMotion.isClickPlaying()) {
                 // Touch/accessibility clicks without a preceding DPAD_CENTER down.
                 h.satinMotion.playClick();
             }
             if (e.kind == Entry.ALL_APPS && listener != null) listener.onAllAppsPressed();
-            else launch(e);
+            else launch(e, h.card, position < dockSize);
         });
         h.card.setOnLongClickListener(v -> {
             if (e.kind == Entry.ALL_APPS) return true;
@@ -633,7 +636,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     }
 
     /** Opens the tile's activity by explicit component, with no extras: a card can name nothing else. */
-    private void launch(Entry e) {
+    private void launch(Entry e, View sourceCard, boolean inDock) {
         if (e.kind == Entry.HOME_SETTINGS) {
             ctx.startActivity(new Intent(ctx, HomeSettingsActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -654,7 +657,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 if (stable != null) {
                     stable.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                    startWithSilk(stable);
+                    startWithSilk(stable, sourceCard, inDock, e.label);
                     return;
                 }
             } catch (RuntimeException ignored) {
@@ -666,33 +669,51 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 .setComponent(e.component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         try {
-            startWithSilk(i);
+            startWithSilk(i, sourceCard, inDock && "org.smarttube.stable".equals(e.pkg), e.label);
         } catch (Exception ex) {
             Toast.makeText(ctx, ctx.getString(R.string.cant_open, e.label), Toast.LENGTH_SHORT).show();
         }
     }
 
     /**
-     * Ask Android for a short activity crossfade without delaying launch by 180 ms.
-     * Another app or the OEM firmware may override the animation.
+     * Keep the OEM ActivityOptions fade as best-effort. Only the SmartTube dock
+     * tile can opt into a bounded frame-commit handoff, allowing at least one
+     * pressed-cue frame to be submitted before the third-party Activity starts.
+     * A committed frame is not necessarily displayed: physical TV testing must
+     * determine whether the cue is perceptible. No other apps are delayed.
+     *
+     * For controlled A/B, "satin_v84/frame_cue_handoff" can turn this off; the
+     * existing immediate-launch path stays intact.
      */
-    private void startWithSilk(Intent intent) {
-        if (!satinEnabled) {
-            ctx.startActivity(intent);
-            return;
-        }
-        // Best-effort Android transition. Some TV firmwares/target activities
-        // ignore the fade; the launcher-only key-down cue remains independent.
-        Log.i("GlassTV.V84", "Silk activity transition requested, no launch delay");
-        ActivityOptions options = ActivityOptions.makeCustomAnimation(
-                ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
-        ctx.startActivity(intent, options.toBundle());
-        if (ctx instanceof Activity) {
-            // Some Android TV 10 builds ignore options on cross-task launches.
-            // This is another best-effort request; never hold the app launch.
-            ((Activity) ctx).overridePendingTransition(
-                    R.anim.satin_silk_enter, R.anim.satin_silk_exit);
-        }
+    private void startWithSilk(Intent intent, View sourceCard, boolean frameEligible, String appLabel) {
+        Runnable startNow = () -> {
+            try {
+                if (!satinEnabled) {
+                    ctx.startActivity(intent);
+                    return;
+                }
+                Log.i("GlassTV.V84", "Silk activity transition requested");
+                ActivityOptions options = ActivityOptions.makeCustomAnimation(
+                        ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+                ctx.startActivity(intent, options.toBundle());
+                if (ctx instanceof Activity) {
+                    ((Activity) ctx).overridePendingTransition(
+                            R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+                }
+            } catch (RuntimeException ex) {
+                // Once the frame callback runs this exception is asynchronous
+                // to onClick, so handle it here rather than crashing Home.
+                Log.w("GlassTV.V846", "App launch failed: " + appLabel, ex);
+                Toast.makeText(ctx, ctx.getString(R.string.cant_open, appLabel),
+                        Toast.LENGTH_SHORT).show();
+            }
+        };
+        boolean afterFrame = satinEnabled && frameEligible
+                && DockArtwork.get(ctx).valid
+                && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
+                        .getBoolean("frame_cue_handoff", true);
+        if (afterFrame) frameCueHandoff.afterCueFrame(sourceCard, startNow);
+        else startNow.run();
     }
 
     /** Preserve focus identity across Home return without replaying a sweep. */
@@ -725,6 +746,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
     void suspendSatinEffects() {
+        frameCueHandoff.cancel();
         suppressNextDockSweep();
         activeSatinMotion = null;
         previousDockFocus = -1;
