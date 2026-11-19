@@ -32,7 +32,7 @@ final class SatinLightBridge extends Drawable {
         paint.setColor(0xFFF3F9FF);
         paint.setStrokeWidth(Math.max(.7f, .85f * host.getResources().getDisplayMetrics().density));
         paint.setStrokeCap(Paint.Cap.ROUND);
-        animator.setDuration(270L);
+        animator.setDuration(SatinTiming.OPTICAL_MOTION_MS);
         // Zero velocity at both ends; no harsh deceleration at the destination.
         animator.setInterpolator(new PathInterpolator(.42f, 0f, .58f, 1f));
         animator.addUpdateListener(a -> {
