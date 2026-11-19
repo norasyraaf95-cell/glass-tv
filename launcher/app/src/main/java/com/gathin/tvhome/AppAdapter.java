@@ -770,6 +770,11 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         if (premiumLaunchCue != null) premiumLaunchCue.cancel();
     }
 
+    /** Release overlay once Home is fully hidden (or when it returns). */
+    void finishLaunchHandoff() {
+        if (premiumLaunchCue != null) premiumLaunchCue.cancel();
+    }
+
     /** Prevents a stale sweep after returning from a third-party app or top widgets. */
     void suppressNextDockSweep() {
         suppressNextDockSweep = true;
@@ -780,7 +785,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
     void suspendSatinEffects() {
         frameCueHandoff.cancel();
-        if (premiumLaunchCue != null) premiumLaunchCue.cancel();
+        if (premiumLaunchCue != null) premiumLaunchCue.onHomePausing();
         // A genuinely completed app handoff ends the repeat-press window.
         // Returning to Home must allow SmartTube to be opened again immediately.
         lastSmartTubeClickAtMs = -1L;
