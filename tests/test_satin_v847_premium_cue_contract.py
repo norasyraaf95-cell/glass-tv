@@ -16,8 +16,9 @@ def read(name):
 class V847PremiumCueContractTest(unittest.TestCase):
     def test_isolated_package_and_version(self):
         gradle = (ROOT / "launcher/app/build.gradle").read_text(encoding="utf-8")
-        self.assertIn("versionCode 31", gradle)
-        self.assertIn("applicationIdSuffix '.referencev781v847'", gradle)
+        self.assertIn("versionCode 32", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v848'", gradle)
+        self.assertNotIn("applicationIdSuffix '.referencev781v847'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v846'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v845'", gradle)
 
@@ -34,8 +35,8 @@ class V847PremiumCueContractTest(unittest.TestCase):
     def test_card_only_prelauch_and_bounded(self):
         cue = read("PremiumLaunchCue.java")
         adapter = read("AppAdapter.java")
-        self.assertIn("PRESSED_SCALE = .978f", cue)
-        self.assertIn("DIM_ALPHA = .17f", cue)
+        self.assertIn("PRESSED_SCALE = .95f", cue)
+        self.assertIn("DIM_ALPHA = .28f", cue)
         self.assertIn("host.getOverlay().add(scrim)", cue)
         self.assertIn("canvas.clipOutPath(exclusion)", cue)
         self.assertIn("handler.postDelayed(deadline, durationMs + STALL_GRACE_MS)", cue)
