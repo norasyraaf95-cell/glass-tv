@@ -48,7 +48,7 @@ final class SatinLightBridge extends Drawable {
         host.getOverlay().add(this);
     }
 
-    void travel(View from, View to) {
+    void travel(View from, View to, boolean rapid) {
         stop();
         if (from == null || to == null || from == to
                 || from.getWidth() <= 0 || to.getWidth() <= 0) return;
@@ -63,12 +63,15 @@ final class SatinLightBridge extends Drawable {
         // The glint is restricted to the empty gap; never draw over icons or
         // the existing pink focus border. Skip near-touching cards entirely.
         if (gap < 2f) return;
-        segment = Math.min(gap * .30f, 8f * host.getResources().getDisplayMetrics().density);
+        // Slightly longer gap-only cue for sofa visibility; still never overlaps artwork.
+        segment = Math.min(gap * .46f, 13f * host.getResources().getDisplayMetrics().density);
         y = toRect.top + toRect.height() * .16f;
         setBounds(0, 0, host.getWidth(), host.getHeight());
         progress = 0f;
         active = true;
         animator.setFloatValues(0f, 1f);
+        animator.setDuration(rapid ? SatinTiming.RAPID_OPTICAL_MOTION_MS
+                : SatinTiming.OPTICAL_MOTION_MS);
         animator.start();
     }
 
@@ -88,7 +91,7 @@ final class SatinLightBridge extends Drawable {
         float a = Math.max(left, center - segment * .5f);
         float b = Math.min(right, center + segment * .5f);
         if (b <= a) return;
-        paint.setAlpha(Math.round(255f * .42f * fade));
+        paint.setAlpha(Math.round(255f * .66f * fade));
         canvas.drawLine(a, y, b, y, paint);
     }
     @Override public void setAlpha(int alpha) {}
