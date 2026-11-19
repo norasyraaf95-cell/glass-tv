@@ -542,7 +542,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> {
             // Feedback is non-blocking: startActivity / All Apps runs in this same click.
-            if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid) {
+            if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid
+                    && !h.satinMotion.isClickPlaying()) {
+                // Touch/accessibility clicks without a preceding DPAD_CENTER down.
                 h.satinMotion.playClick();
             }
             if (e.kind == Entry.ALL_APPS && listener != null) listener.onAllAppsPressed();
@@ -678,6 +680,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             ctx.startActivity(intent);
             return;
         }
+        // Best-effort Android transition. Some TV firmwares/target activities
+        // ignore the fade; the launcher-only key-down cue remains independent.
+        Log.i("GlassTV.V84", "Silk activity transition requested, no launch delay");
         ActivityOptions options = ActivityOptions.makeCustomAnimation(
                 ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
         ctx.startActivity(intent, options.toBundle());
@@ -907,10 +912,25 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
             card.setOnKeyListener((view, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                int pos = getBindingAdapterPosition();
+                // A premium, stationary press cue begins on the physical key-down.
+                // Returning false keeps Android's normal click and long-press
+                // dispatch fully intact. No artificial pause before startActivity.
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    if (event.getRepeatCount() == 0 && owner.satinEnabled
+                            && pos >= 0 && pos < owner.dockSize
+                            && DockArtwork.get(view.getContext()).valid) {
+                        satinMotion.playClick();
+                        Log.i("GlassTV.V84", "Silk key-down cue on dock " + pos);
+                    }
+                    return false;
+                }
                 if (keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
                         && keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
-                int pos = getBindingAdapterPosition();
-                return listener != null && pos != RecyclerView.NO_POSITION && listener.onTileVerticalKey(pos, keyCode);
+                return listener != null && pos != RecyclerView.NO_POSITION
+                        && listener.onTileVerticalKey(pos, keyCode);
             });
 
             card.setOnFocusChangeListener((view, focused) -> {
