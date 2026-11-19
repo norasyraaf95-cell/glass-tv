@@ -47,6 +47,14 @@ class SatinV846MotionContractTest(unittest.TestCase):
         self.assertNotIn("applicationIdSuffix '.referencev781v845'", gradle)
         self.assertIn("ctx.startActivity(intent, options.toBundle());", adapter)
 
+    def test_smarttube_repeat_guard_prevents_second_launch_during_handoff(self):
+        adapter = self.text("AppAdapter.java")
+        policy = self.text("SatinLaunchPolicy.java")
+        self.assertIn("SatinLaunchPolicy.acceptNewPress(", adapter)
+        self.assertIn("lastSmartTubeClickAtMs = now", adapter)
+        self.assertIn("REPEAT_GUARD_MS = 450L", policy)
+        self.assertIn("nowMs - previousAtMs >= REPEAT_GUARD_MS", policy)
+
     def test_previous_prayer_and_weather_remain_present(self):
         widget = self.text("ShahAlamWidgets.java")
         weather = self.text("WindyCloudView.java")
