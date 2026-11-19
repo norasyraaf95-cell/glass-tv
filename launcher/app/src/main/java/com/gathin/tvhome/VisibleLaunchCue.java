@@ -40,6 +40,8 @@ final class VisibleLaunchCue {
     private final CueDrawable overlay = new CueDrawable();
     private final Rect cardRect = new Rect();
     private final RectF selected = new RectF();
+    private View pressedCard;
+    private float originalScaleX = 1f, originalScaleY = 1f;
     private Runnable pendingAction;
     private Runnable watchdog;
     private Runnable settle;
@@ -68,6 +70,9 @@ final class VisibleLaunchCue {
             return true;
         }
         clear();
+        pressedCard = card;
+        originalScaleX = card.getScaleX();
+        originalScaleY = card.getScaleY();
         cardRect.set(0, 0, card.getWidth(), card.getHeight());
         host.offsetDescendantRectToMyCoords(card, cardRect);
         selected.set(cardRect);
@@ -84,6 +89,13 @@ final class VisibleLaunchCue {
             float elapsed = SystemClock.uptimeMillis() - startUptimeMs;
             float phase = Math.min(1f, Math.max(0f, elapsed / durationMs));
             overlay.setPhase(phase);
+            // 1.6% temporary compression; recover in the same 120/180ms cue.
+            // The original dock artwork, layout and resting geometry are untouched.
+            float compression = 1f - .016f * (float) Math.sin(Math.PI * phase);
+            if (pressedCard != null && pressedCard.isAttachedToWindow()) {
+                pressedCard.setScaleX(originalScaleX * compression);
+                pressedCard.setScaleY(originalScaleY * compression);
+            }
             if (phase >= 1f) finish("cue-complete");
             else choreographer.postFrameCallback(frame);
         };
@@ -125,6 +137,11 @@ final class VisibleLaunchCue {
     private void clear() {
         pendingAction = null;
         stopCallbacks();
+        if (pressedCard != null) {
+            pressedCard.setScaleX(originalScaleX);
+            pressedCard.setScaleY(originalScaleY);
+            pressedCard = null;
+        }
         if (settle != null) handler.removeCallbacks(settle);
         settle = null;
         showing = false;
