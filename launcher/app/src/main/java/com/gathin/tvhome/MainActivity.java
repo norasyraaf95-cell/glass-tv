@@ -713,6 +713,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         tilesReady = false;
         promptsPaused = false;
         resuming = true;
+        // V8.4: resuming Home never replays an obsolete directional sweep.
+        if (adapter != null) adapter.suppressNextDockSweep();
         reloadApps(true);
         updateShamsiDate();
         updateCustomDate();
@@ -795,6 +797,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.post(() -> {
             int pos = adapter.positionOf(returnKey);
             focusTile(pos >= 0 ? pos : returnSlot);
+            // Quiet one-shot return to the last tile; no wallpaper or dock movement.
+            adapter.playSatinReturn(grid);
             tilesReady = true;
             resuming = false;
             View now = getCurrentFocus();
@@ -805,6 +809,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override
     protected void onPause() {
+        // Event-only overlay animations must never run behind a third-party app.
+        if (adapter != null) adapter.suspendSatinEffects();
         super.onPause();
         unregisterReceiver(packageReceiver);
         shahAlamWidgets.pause();
@@ -1029,6 +1035,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Sends the focus shape onto a pill: from a tile it glides up and narrows into the pill. */
     private void moveTopHighlight(View pill) {
+        if (adapter != null) adapter.suppressNextDockSweep();
         if (resuming) return;
         pill.getLocationInWindow(pillAt);
         glider.getLocationInWindow(rootAt);
