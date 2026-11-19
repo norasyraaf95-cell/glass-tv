@@ -13,6 +13,8 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,14 +37,17 @@ final class PremiumLaunchCue {
     private static final String TAG = "GlassTV.V847";
     private static final float PRESSED_SCALE = .978f;
     private static final float DIM_ALPHA = .17f;
+    private static final long STALL_GRACE_MS = 64L;
 
     private final ViewGroup host;
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private final float density;
     private final DimScrim scrim;
 
     private View pressedCard;
     private ValueAnimator animator;
     private Runnable pendingLaunch;
+    private Runnable deadline;
     private float savedScaleX = 1f, savedScaleY = 1f;
     private long startedAt;
     private boolean overlayAttached;
@@ -89,8 +94,16 @@ final class PremiumLaunchCue {
 
         scrim.place(mapped, host.getWidth(), host.getHeight());
         scrim.setProgress(0f);
-        host.getOverlay().add(scrim);
-        overlayAttached = true;
+        try {
+            host.getOverlay().add(scrim);
+            overlayAttached = true;
+        } catch (RuntimeException error) {
+            // An OEM overlay failure cannot prevent SmartTube from launching.
+            Log.w(TAG, "Cannot draw premium launch cue; immediate handoff", error);
+            cancel();
+            launch.run();
+            return true;
+        }
 
         final ValueAnimator running = ValueAnimator.ofFloat(0f, 1f);
         animator = running;
@@ -115,20 +128,12 @@ final class PremiumLaunchCue {
 
             @Override public void onAnimationEnd(Animator animation) {
                 if (wasCancelled || animator != running || pendingLaunch != launch) return;
-                // The cue is now fully composed. Leave the last appearance in
-                // place until Home pauses; Android controls the following frames.
-                pendingLaunch = null;
-                animator = null;
-                if (card.isAttachedToWindow()) {
-                    Log.i(TAG, "Cue rendered for " + (SystemClock.uptimeMillis() - startedAt)
-                            + "ms; requesting SmartTube start");
-                    launch.run();
-                } else {
-                    clearAppearance();
-                    Log.i(TAG, "Card detached before launch; handoff cancelled");
-                }
+                finishCue("animation-complete");
             }
         });
+        // If the OEM fails to finish the animator, do not trap the OK press.
+        deadline = () -> finishCue("bounded-fallback");
+        handler.postDelayed(deadline, durationMs + STALL_GRACE_MS);
         Log.i(TAG, "Premium SmartTube prelaunch cue " + durationMs + "ms");
         running.start();
         return true;
@@ -140,10 +145,33 @@ final class PremiumLaunchCue {
      */
     void cancel() {
         pendingLaunch = null;
+        if (deadline != null) handler.removeCallbacks(deadline);
+        deadline = null;
         ValueAnimator old = animator;
         animator = null;
         if (old != null) old.cancel();
         clearAppearance();
+    }
+
+    private void finishCue(String reason) {
+        if (pendingLaunch == null) return;
+        Runnable action = pendingLaunch;
+        pendingLaunch = null;
+        if (deadline != null) handler.removeCallbacks(deadline);
+        deadline = null;
+        ValueAnimator old = animator;
+        animator = null;
+        if (old != null && old.isRunning()) old.cancel();
+        if (pressedCard != null && pressedCard.isAttachedToWindow()) {
+            Log.i(TAG, "Premium cue " + reason + " after "
+                    + (SystemClock.uptimeMillis() - startedAt)
+                    + "ms; requesting SmartTube launch");
+            // Keep the last cue frame until Home goes into onPause.
+            action.run();
+        } else {
+            Log.i(TAG, "Cue source detached; not launching stale selection");
+            clearAppearance();
+        }
     }
 
     private void clearAppearance() {
