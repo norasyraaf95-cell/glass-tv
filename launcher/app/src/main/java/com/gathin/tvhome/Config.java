@@ -187,7 +187,7 @@ final class Config {
         wallpaperIntervalMs = 0L;
 
         return new Config(dock, hidden, liveTv, liveTvAction, panelService, panelAction, inputAction,
-                5, 0, shamsi, false, true,
+                5, 0, shamsi, false, reducedMotion,
                 vpn, homeSettings, true, liveTvRow, background, wallpaper, wallpapers, wallpaperIntervalMs,
                 places, cacheCleanDays, applied);
     }

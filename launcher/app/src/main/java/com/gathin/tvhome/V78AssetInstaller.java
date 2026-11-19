@@ -24,6 +24,7 @@ final class V78AssetInstaller {
             "liquid_dock_base.webp", "liquid_dock_focused.webp",
             "liquid_focus_illumination.webp", "liquid_focus_reflection.webp",
             "liquid_focus_glow.webp", "liquid_static_reflections.webp",
+            "floating_prism_prayer.webp", "floating_prism_weather.webp",
             "wallpaper.jpg", "config.json"));
     private V78AssetInstaller() {}
 

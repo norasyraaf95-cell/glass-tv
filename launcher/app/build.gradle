@@ -10,19 +10,19 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 20
-        versionName '2.9.8.1-reference-v7.8.1'
+        versionCode 29
+        versionName '2.9.8.4.5-prayer-bridge-experimental'
     }
 
     buildTypes {
         release {
             // Side-by-side preview: never overwrite the already working HOME APK.
-            applicationIdSuffix '.referencev781'
+            applicationIdSuffix '.referencev781v845'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Sideloaded over ADB, never published: sign with the debug key so it installs over a debug build.
+            // CI runner debug keys can vary between runs; use a distinct package for this fix build.
             signingConfig signingConfigs.debug
         }
     }

@@ -1,6 +1,8 @@
 package com.gathin.tvhome;
 
 import android.animation.ValueAnimator;
+import android.app.Activity;
+import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -15,9 +17,11 @@ import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.SystemClock;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Gravity;
 import android.widget.FrameLayout;
@@ -140,6 +144,14 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private final boolean showHomeSettings;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): no overshoot, shorter fades. */
     private final boolean reducedMotion;
+    /** Experimental motion never modifies the five V7.8.1 source artwork bitmaps. */
+    private final boolean satinEnabled;
+    private int previousDockFocus = -1;
+    private long previousDockAtMs;
+    private View previousDockCard;
+    private SatinLightBridge satinBridge;
+    private SatinPrismMotion activeSatinMotion;
+    private boolean suppressNextDockSweep = true;
     private final List<Entry> items = new ArrayList<>();
     /** The order someone arranged the tiles in, by key (see {@link #keyAt}); empty until they do. */
     private final List<String> arranged = new ArrayList<>();
@@ -155,6 +167,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.reducedMotion = cfg.reducedMotion;
+        // Experimental branch only; existing reduced_motion and an explicit off switch win.
+        this.satinEnabled = !cfg.reducedMotion
+                && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
+                        .getBoolean("enabled", true);
+        Log.i("GlassTV.V84", "Satin enabled=" + satinEnabled
+                + " reducedMotion=" + cfg.reducedMotion);
         // Tiles keep their identity across reload(), so a focused tile stays on its app instead of
         // its view being rebound to whatever app now sits in that slot.
         setHasStableIds(true);
@@ -365,12 +383,13 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         nameLp.width = w;
         nameLp.topMargin = h + Math.round(7 * density);
         name.setLayoutParams(nameLp);
-        return new Holder(v, listener, reducedMotion);
+        return new Holder(v, listener, reducedMotion, this);
     }
 
     @Override
     public void onBindViewHolder(@NonNull Holder h, int position) {
         Entry e = items.get(position);
+        h.satinMotion.stop(); // Rebinding cannot carry an obsolete sweep onto a different app.
         h.name.setText(e.name);
         h.name.setVisibility(position < dockSize ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
@@ -389,7 +408,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 // EXACT user-approved pre-rendered glass and wordmarks, not shader
                 // approximations. Both bitmaps remain stationary, only alpha crossfades.
                 h.dockGlass.stopFocus();
-                h.card.setForeground(null);
+                h.card.setForeground(satinEnabled ? h.satinMotion : null);
                 h.card.setBackgroundColor(Color.TRANSPARENT);
                 h.card.setScaleX(1f);
                 h.card.setScaleY(1f);
@@ -523,6 +542,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.card.setNextFocusUpId(position == dockSize - 1
                 ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> {
+            // Feedback is non-blocking: startActivity / All Apps runs in this same click.
+            if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid
+                    && !h.satinMotion.isClickPlaying()) {
+                // Touch/accessibility clicks without a preceding DPAD_CENTER down.
+                h.satinMotion.playClick();
+            }
             if (e.kind == Entry.ALL_APPS && listener != null) listener.onAllAppsPressed();
             else launch(e);
         });
@@ -547,6 +572,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     @Override
     public void onViewRecycled(@NonNull Holder h) {
         h.card.animate().cancel();
+        h.satinMotion.stop();
+        if (activeSatinMotion == h.satinMotion) activeSatinMotion = null;
         h.name.animate().cancel();
         h.syncLight(0f);
         h.dockGlass.stopFocus();
@@ -627,7 +654,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 if (stable != null) {
                     stable.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                    ctx.startActivity(stable);
+                    startWithSilk(stable);
                     return;
                 }
             } catch (RuntimeException ignored) {
@@ -639,9 +666,120 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 .setComponent(e.component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         try {
-            ctx.startActivity(i);
+            startWithSilk(i);
         } catch (Exception ex) {
             Toast.makeText(ctx, ctx.getString(R.string.cant_open, e.label), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Ask Android for a short activity crossfade without delaying launch by 180 ms.
+     * Another app or the OEM firmware may override the animation.
+     */
+    private void startWithSilk(Intent intent) {
+        if (!satinEnabled) {
+            ctx.startActivity(intent);
+            return;
+        }
+        // Best-effort Android transition. Some TV firmwares/target activities
+        // ignore the fade; the launcher-only key-down cue remains independent.
+        Log.i("GlassTV.V84", "Silk activity transition requested, no launch delay");
+        ActivityOptions options = ActivityOptions.makeCustomAnimation(
+                ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+        ctx.startActivity(intent, options.toBundle());
+        if (ctx instanceof Activity) {
+            // Some Android TV 10 builds ignore options on cross-task launches.
+            // This is another best-effort request; never hold the app launch.
+            ((Activity) ctx).overridePendingTransition(
+                    R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+        }
+    }
+
+    /** Preserve focus identity across Home return without replaying a sweep. */
+    void seedSatinDockFocus(RecyclerView grid, int position) {
+        if (!satinEnabled) return;
+        if (position < 0 || position >= dockSize || grid == null) {
+            previousDockFocus = -1;
+            previousDockCard = null;
+            suppressNextDockSweep();
+            return;
+        }
+        RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(position);
+        if (!(vh instanceof Holder)) return;
+        Holder h = (Holder) vh;
+        if (!h.card.isFocused()) return;
+        previousDockFocus = position;
+        previousDockCard = h.card;
+        previousDockAtMs = SystemClock.uptimeMillis();
+        // The restored tile is now the origin for the first real DPAD movement.
+        suppressNextDockSweep = false;
+        Log.i("GlassTV.V84", "Seed focused dock tile=" + position);
+    }
+
+    /** Prevents a stale sweep after returning from a third-party app or top widgets. */
+    void suppressNextDockSweep() {
+        suppressNextDockSweep = true;
+        if (satinBridge != null) satinBridge.stop();
+        if (activeSatinMotion != null) activeSatinMotion.stop();
+    }
+
+    /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
+    void suspendSatinEffects() {
+        suppressNextDockSweep();
+        activeSatinMotion = null;
+        previousDockFocus = -1;
+        previousDockCard = null;
+    }
+
+    /** Only an actual dock-to-dock focus transition gets a directional sweep. */
+    private void onReferenceDockFocused(Holder h, int position) {
+        if (!satinEnabled || position < 0 || position >= dockSize) return;
+        long now = SystemClock.uptimeMillis();
+        long interval = now - previousDockAtMs;
+        // No maximum idle gap: one deliberate DPAD press after a long pause
+        // must still receive the V8.4 directional reflection.
+        boolean moving = SatinMotionPolicy.shouldSweep(
+                previousDockFocus, position, suppressNextDockSweep, interval);
+        Log.i("GlassTV.V84", "Dock focus " + previousDockFocus + " -> " + position
+                + " elapsedMs=" + interval + " suppressed=" + suppressNextDockSweep
+                + " playSweep=" + moving);
+        if (satinBridge != null) satinBridge.stop();
+        if (activeSatinMotion != null && activeSatinMotion != h.satinMotion) {
+            activeSatinMotion.stop();
+        }
+        activeSatinMotion = h.satinMotion;
+        if (moving) {
+            h.satinMotion.playSweep(position > previousDockFocus ? 1 : -1);
+            if (previousDockCard != null && previousDockCard.isAttachedToWindow()
+                    && h.itemView.getParent() instanceof ViewGroup) {
+                ViewGroup grid = (ViewGroup) h.itemView.getParent();
+                if (satinBridge == null) satinBridge = new SatinLightBridge(grid);
+                satinBridge.travel(previousDockCard, h.card);
+            }
+        } else {
+            // Rapid DPAD: land immediately; don't queue stale optical animations.
+            h.satinMotion.stop();
+        }
+        previousDockFocus = position;
+        previousDockCard = h.card;
+        previousDockAtMs = now;
+        suppressNextDockSweep = false;
+    }
+
+    /** Gentle Back return: do not replay the left/right directional reflection. */
+    void playSatinReturn(RecyclerView grid) {
+        if (!satinEnabled || grid == null) return;
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            RecyclerView.ViewHolder vh = grid.getChildViewHolder(grid.getChildAt(i));
+            if (vh instanceof Holder) {
+                Holder h = (Holder) vh;
+                int pos = h.getBindingAdapterPosition();
+                if (pos >= 0 && pos < dockSize && h.card.isFocused()
+                        && DockArtwork.get(ctx).valid) {
+                    h.satinMotion.playSoftReturn();
+                    break;
+                }
+            }
         }
     }
 
@@ -736,15 +874,17 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         final ImageView focusHalo;
         final ImageView focusReflection;
         final ValueAnimator lightAnimator = ValueAnimator.ofFloat(0f, 1f);
+        final SatinPrismMotion satinMotion;
         float lightIntensity = 0f;
         final ImageView icon;
         final TextView label;
         final TextView name;
         final boolean reducedMotion;
 
-        Holder(View v, TileListener listener, boolean reducedMotion) {
+        Holder(View v, TileListener listener, boolean reducedMotion, AppAdapter owner) {
             super(v);
             card = v.findViewById(R.id.card);
+            satinMotion = new SatinPrismMotion(v.getResources().getDisplayMetrics().density);
             dockGlass = new LiquidCrystalDockDrawable(card);
             Backdrop.watch(card);
             banner = v.findViewById(R.id.banner);
@@ -757,7 +897,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             this.reducedMotion = reducedMotion;
             // One animation timeline synchronizes all THREE stationary light
             // layers. Retarget from current intensity on rapid DPAD reversal.
-            lightAnimator.setDuration(240L);
+            lightAnimator.setDuration(218L); // 65% focus responsiveness preset.
             lightAnimator.setInterpolator(new PathInterpolator(.20f, .0f, .22f, 1f));
             lightAnimator.addUpdateListener(a -> applyLight((float) a.getAnimatedValue()));
 
@@ -779,10 +919,25 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
             card.setOnKeyListener((view, keyCode, event) -> {
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+                int pos = getBindingAdapterPosition();
+                // A premium, stationary press cue begins on the physical key-down.
+                // Returning false keeps Android's normal click and long-press
+                // dispatch fully intact. No artificial pause before startActivity.
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == KeyEvent.KEYCODE_ENTER
+                        || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    if (event.getRepeatCount() == 0 && owner.satinEnabled
+                            && pos >= 0 && pos < owner.dockSize
+                            && DockArtwork.get(view.getContext()).valid) {
+                        satinMotion.playClick();
+                        Log.i("GlassTV.V84", "Silk key-down cue on dock " + pos);
+                    }
+                    return false;
+                }
                 if (keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
                         && keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
-                int pos = getBindingAdapterPosition();
-                return listener != null && pos != RecyclerView.NO_POSITION && listener.onTileVerticalKey(pos, keyCode);
+                return listener != null && pos != RecyclerView.NO_POSITION
+                        && listener.onTileVerticalKey(pos, keyCode);
             });
 
             card.setOnFocusChangeListener((view, focused) -> {
@@ -804,7 +959,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         // V7.8.1: no moving art, only synchronized illumination.
                         // Glass and logos stay pixel-perfect while light changes.
                         animateLight(focused);
+                        if (focused) owner.onReferenceDockFocused(this, cardIndex);
+                        else satinMotion.stop();
                     } else {
+                        satinMotion.stop();
                         dockGlass.animateFocus(focused);
                     }
                     view.setScaleX(1f);
@@ -813,6 +971,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                     view.setTranslationZ(0f);
                     name.setAlpha(0f); // dock names are not displayed under the tiles
                 } else if (reducedMotion) {
+                    if (focused) owner.suppressNextDockSweep();
                     view.animate().scaleX(scale).scaleY(scale)
                             .translationY(0f).translationZ(0f)
                             .setDuration(focused ? 120L : 80L)
@@ -820,6 +979,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                             .start();
                     name.animate().alpha(focused ? 1f : 0f).setDuration(100L).start();
                 } else {
+                    if (focused) owner.suppressNextDockSweep();
                     view.animate().scaleX(scale).scaleY(scale)
                             .translationY(0f).translationZ(0f)
                             .setDuration(focused ? 260L : 180L)
