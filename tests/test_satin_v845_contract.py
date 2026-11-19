@@ -34,10 +34,12 @@ class SatinV845ContractTest(unittest.TestCase):
         self.assertIn('verifiedPrayerFile.length() > 100_000', code)
         self.assertNotIn('05:49:00', code)
 
-    def test_launch_still_no_delay(self):
+    def test_launch_cue_remains_bounded_and_oem_fade_retained(self):
         code = (JAVA / "AppAdapter.java").read_text(encoding="utf-8")
+        handoff = (JAVA / "FrameCueHandoff.java").read_text(encoding="utf-8")
         self.assertIn('ctx.startActivity(intent, options.toBundle())', code)
         self.assertIn('overridePendingTransition(', code)
+        self.assertIn('MAX_FRAME_WAIT_MS = 64L', handoff)
         self.assertNotIn('postDelayed(() -> startWithSilk', code)
 
     def test_installed_topbar_skins_unmodified(self):
