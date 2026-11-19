@@ -808,15 +808,18 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         }
         activeSatinMotion = h.satinMotion;
         if (moving) {
-            h.satinMotion.playSweep(position > previousDockFocus ? 1 : -1);
+            // A short retargetable cue also acknowledges rapid left/right presses;
+            // stop() above guarantees no old animation remains queued.
+            boolean rapid = SatinMotionPolicy.isRapid(interval);
+            h.satinMotion.playSweep(position > previousDockFocus ? 1 : -1, rapid);
             if (previousDockCard != null && previousDockCard.isAttachedToWindow()
                     && h.itemView.getParent() instanceof ViewGroup) {
                 ViewGroup grid = (ViewGroup) h.itemView.getParent();
                 if (satinBridge == null) satinBridge = new SatinLightBridge(grid);
-                satinBridge.travel(previousDockCard, h.card);
+                satinBridge.travel(previousDockCard, h.card, rapid);
             }
         } else {
-            // Rapid DPAD: land immediately; don't queue stale optical animations.
+            // Initial/restored focus does not draw a directional glint.
             h.satinMotion.stop();
         }
         previousDockFocus = position;
