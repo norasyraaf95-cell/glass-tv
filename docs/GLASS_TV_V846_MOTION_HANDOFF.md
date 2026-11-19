@@ -6,6 +6,7 @@
 - Working branch: `glass-tv-v846-motion-handoff-development`
 - TV baseline: Xiaomi `MiTV-AESP0` / Android 10; 163/2072 janky frames (7.87%), p95 20ms, p99 57ms from a non-isolated `gfxinfo` capture.
 - Existing installed HOME package: `com.gathin.tvhome.referencev781v845`. Do not disable, uninstall, or change it during source review.
+- Prototype release package is distinct: `com.gathin.tvhome.referencev781v846` (versionCode 30), so it cannot silently replace the installed V8.4.5 application. **No APK has been built.**
 - The original `referencev781top` package must remain available as rollback.
 
 ## V8.4.6 code changes
@@ -18,7 +19,7 @@
 
 ## Unchanged scope
 
-No edits to `ShahAlamWidgets.java`, `WindyCloudView.java`, wallpaper, five approved WebP dock artworks, topbar assets, prayer API, activity manifest, application ID, Gradle configuration or Android settings. The reference/production branches are untouched.
+No edits to `ShahAlamWidgets.java`, `WindyCloudView.java`, wallpaper, five approved WebP dock artworks, topbar assets, prayer API, activity manifest or Android settings. **Only** the Gradle release suffix/version are changed to keep V8.4.6 isolated from the installed V8.4.5 package. The reference/production branches are untouched.
 
 ## Verification
 
@@ -28,7 +29,7 @@ python3 -m unittest discover -s tests -p 'test_satin_*.py' -v
 cd launcher && ./gradlew testReleaseUnitTest
 ```
 
-**Do not run `assembleRelease` or install anything** until the user authorizes a candidate APK. Source contract tests are not proof of device performance.
+**Do not run `assembleRelease` or install anything** until the user authorizes a candidate APK. Future package-specific artwork (WebP atlas, topbar skins, wallpaper/config and windy clouds video) must be prepared under the V8.4.6 external files path before visual comparison; no files are copied to the TV at this stage. Source contract tests are not proof of device performance.
 
 Later on-device test (only after approval):
 - Film SmartTube at high frame rate, cold and warm, comparing frame-aware mode against immediate mode. Measure from OK feedback to app visibility and black-screen duration separately.
