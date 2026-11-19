@@ -10,14 +10,14 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 33
-        versionName '2.9.8.4.9-motion-refinement-experimental'
+        versionCode 34
+        versionName '2.9.8.5.0-smarttube-handoff-experimental'
     }
 
     buildTypes {
         release {
             // Side-by-side preview: never overwrite the already working HOME APK.
-            applicationIdSuffix '.referencev781v849motion'
+            applicationIdSuffix '.referencev781v850smarttube'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
