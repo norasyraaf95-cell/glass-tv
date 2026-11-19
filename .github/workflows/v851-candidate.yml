@@ -43,7 +43,7 @@ jobs:
           apk=launcher/app/build/outputs/apk/release/app-release.apk
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/v851-badging.txt
-          grep -F "package: name='com.gathin.tvhome.referencev781v851motion' versionCode='35' versionName='2.9.8.5.1-smarttube-immediate-experimental'" /tmp/v851-badging.txt
+          grep -F "package: name='com.gathin.tvhome.referencev781v851immediate' versionCode='35' versionName='2.9.8.5.1-smarttube-immediate-experimental'" /tmp/v851-badging.txt
           cp "$apk" GlassTV_V8.5.1_immediate_preview.apk
           sha256sum GlassTV_V8.5.1_immediate_preview.apk > GlassTV_V8.5.1_sha256.txt
           cat GlassTV_V8.5.1_sha256.txt
