@@ -685,14 +685,16 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         if (!satinEnabled || position < 0 || position >= dockSize) return;
         long now = SystemClock.uptimeMillis();
         long interval = now - previousDockAtMs;
-        boolean moving = !suppressNextDockSweep && previousDockFocus >= 0
-                && previousDockFocus != position && interval < 2500L;
+        // No maximum idle gap: one deliberate DPAD press after a long pause
+        // must still receive the V8.4 directional reflection.
+        boolean moving = SatinMotionPolicy.shouldSweep(
+                previousDockFocus, position, suppressNextDockSweep, interval);
         if (satinBridge != null) satinBridge.stop();
         if (activeSatinMotion != null && activeSatinMotion != h.satinMotion) {
             activeSatinMotion.stop();
         }
         activeSatinMotion = h.satinMotion;
-        if (moving && interval >= 145L) {
+        if (moving) {
             h.satinMotion.playSweep(position > previousDockFocus ? 1 : -1);
             if (previousDockCard != null && previousDockCard.isAttachedToWindow()
                     && h.itemView.getParent() instanceof ViewGroup) {
