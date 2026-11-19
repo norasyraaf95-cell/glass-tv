@@ -4,12 +4,15 @@ import android.app.Activity;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.TextView;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -33,11 +36,15 @@ final class ShahAlamWidgets {
     private static final long WEATHER_MS = 45L * 60_000L;
     private static final long PRAYER_MS = 24L * 60L * 60_000L;
     private static final long RETRY_MS = 30L * 60_000L;
+    // A failed prayer fetch must not leave the new experimental package empty for 30 minutes.
+    private static final long PRAYER_RETRY_MS = 2L * 60_000L;
+    private static final String PRAYER_LOG = "GlassTV.Prayer";
     private static final long MINUTE_MS = 60_000L;
     private static final String WEATHER_URL =
             "https://api.open-meteo.com/v1/forecast?latitude=3.0738&longitude=101.5183"
                     + "&current=temperature_2m,weather_code&timezone=Asia%2FKuala_Lumpur";
     private final SharedPreferences cache;
+    private final File verifiedPrayerFile;
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final TextView temp, condition, prayerName, prayerTime;
@@ -59,6 +66,8 @@ final class ShahAlamWidgets {
 
     ShahAlamWidgets(Activity activity) {
         cache = activity.getSharedPreferences("shah_alam_widgets_v1", Activity.MODE_PRIVATE);
+        File external = activity.getExternalFilesDir(null);
+        verifiedPrayerFile = external == null ? null : new File(external, "prayer_sgr01.json");
         temp = activity.findViewById(R.id.customWeatherTemp);
         condition = activity.findViewById(R.id.customWeatherCondition);
         prayerName = activity.findViewById(R.id.customPrayerName);
@@ -105,7 +114,7 @@ final class ShahAlamWidgets {
                 && now - cache.getLong("weather_attempt", 0) > RETRY_MS;
         boolean prayerDue = (!month.equals(cache.getString("prayer_month", ""))
                 || now - cache.getLong("prayer_fetched", 0) > PRAYER_MS)
-                && now - cache.getLong("prayer_attempt", 0) > RETRY_MS;
+                && now - cache.getLong("prayer_attempt", 0) > PRAYER_RETRY_MS;
         if (!weatherDue && !prayerDue) return;
         SharedPreferences.Editor e = cache.edit();
         if (weatherDue) e.putLong("weather_attempt", now);
@@ -113,7 +122,13 @@ final class ShahAlamWidgets {
         e.apply();
         network.execute(() -> {
             if (weatherDue && !destroyed) fetchWeather();
-            if (prayerDue && !destroyed) fetchPrayers(month);
+            if (prayerDue && !destroyed) {
+                // An optional, owner-verified API JSON gives new packages an
+                // offline-safe first month even if Android TV HTTPS is blocked.
+                // Never replace fresher successfully fetched data.
+                restoreVerifiedBackup(month);
+                fetchPrayers(month);
+            }
             if (!destroyed) handler.post(() -> { if (active) paintCached(); });
         });
     }
@@ -137,14 +152,75 @@ final class ShahAlamWidgets {
             String[] ym = month.split("-");
             String url = "https://api.waktusolat.online/api/solat/SGR01?month="
                     + Integer.parseInt(ym[1]) + "&year=" + ym[0];
+            Log.i(PRAYER_LOG, "Fetching prayer schedule month=" + month);
             String json = get(url);
-            JSONObject obj = new JSONObject(json);
-            JSONArray times = obj.optJSONArray("prayerTime");
-            if (times == null || times.length() < 25) return;
+            if (!saveVerifiedPrayers(json, month, "HTTPS")) {
+                Log.w(PRAYER_LOG, "Prayer response was rejected: missing valid schedule for " + month);
+            }
+        } catch (Exception error) {
+            // Never overwrite previously valid cache with errors or made-up times.
+            Log.w(PRAYER_LOG, "Prayer fetch failed: " + error.getClass().getSimpleName()
+                    + " " + error.getMessage());
+        }
+    }
+
+    /**
+     * Optional fallback installed by the owner from the SAME live SGR01 API.
+     * A new package cannot read another app's private SharedPreferences.
+     * The file is not a hardcoded timetable, and is rejected in a new month.
+     */
+    private boolean restoreVerifiedBackup(String month) {
+        if (month.equals(cache.getString("prayer_month", ""))) return false;
+        if (verifiedPrayerFile == null || !verifiedPrayerFile.isFile()) return false;
+        if (verifiedPrayerFile.length() < 100 || verifiedPrayerFile.length() > 100_000) {
+            Log.w(PRAYER_LOG, "External prayer backup outside safe file-size limits");
+            return false;
+        }
+        try (FileInputStream input = new FileInputStream(verifiedPrayerFile);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(input, "UTF-8"))) {
+            StringBuilder body = new StringBuilder();
+            char[] buffer = new char[2048];
+            int count;
+            while ((count = reader.read(buffer)) != -1) {
+                body.append(buffer, 0, count);
+                if (body.length() > 100_000) return false;
+            }
+            return saveVerifiedPrayers(body.toString(), month, "verified external API file");
+        } catch (Exception error) {
+            Log.w(PRAYER_LOG, "Cannot load verified external prayer file: "
+                    + error.getClass().getSimpleName() + " " + error.getMessage());
+            return false;
+        }
+    }
+
+    /** Accept data only for the present Malaysian calendar month and today's valid five times. */
+    private boolean saveVerifiedPrayers(String json, String month, String origin) {
+        try {
+            if (!month.equals(format("yyyy-MM", new Date()))) return false;
+            JSONArray items = new JSONObject(json).optJSONArray("prayerTime");
+            if (items == null || items.length() < 25) return false;
+            String today = format("dd-MMM-yyyy", new Date());
+            JSONObject match = null;
+            for (int i = 0; i < items.length(); i++) {
+                JSONObject item = items.optJSONObject(i);
+                if (item != null && today.equalsIgnoreCase(item.optString("date"))) {
+                    match = item;
+                    break;
+                }
+            }
+            if (match == null) return false;
+            for (String key : PRAYER_KEYS) {
+                if (shortTime(match.optString(key)) == null) return false;
+            }
             cache.edit().putString("prayer_json", json).putString("prayer_month", month)
                     .putLong("prayer_fetched", System.currentTimeMillis()).apply();
-        } catch (Exception ignored) {
-            // Keep last known timetable; never substitute calculated or example times.
+            Log.i(PRAYER_LOG, "Prayer schedule ready origin=" + origin + " month=" + month
+                    + " entries=" + items.length() + " today=" + today);
+            return true;
+        } catch (Exception error) {
+            Log.w(PRAYER_LOG, "Invalid prayer response from " + origin + ": "
+                    + error.getClass().getSimpleName());
+            return false;
         }
     }
 
