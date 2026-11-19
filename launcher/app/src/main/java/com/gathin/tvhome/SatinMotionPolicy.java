@@ -6,7 +6,7 @@ package com.gathin.tvhome;
  * suppressed a normal sweep after the user paused on one tile.
  */
 final class SatinMotionPolicy {
-    static final long FAST_DPAD_MS = 145L;
+    static final long FAST_DPAD_MS = SatinTiming.FAST_DPAD_MS;
 
     private SatinMotionPolicy() {}
 
