@@ -34,7 +34,7 @@ final class SatinPrismMotion extends Drawable {
     private final Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final LinearGradient opticalGradient = new LinearGradient(
             0f, 0f, 1f, 0f,
-            new int[]{0x00F7FCFF, 0x33F7FCFF, 0xC7F8FCFF, 0x22EFF7FF, 0x00EFF7FF},
+            new int[]{0x00F7FCFF, 0x44F7FCFF, 0xE5F8FCFF, 0x33EFF7FF, 0x00EFF7FF},
             new float[]{0f, .2f, .44f, .72f, 1f}, Shader.TileMode.CLAMP);
     private final LinearGradient microGradient = new LinearGradient(
             0f, 0f, 1f, 0f,
@@ -56,7 +56,7 @@ final class SatinPrismMotion extends Drawable {
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(Math.max(.7f, .65f * density));
         edge.setColor(0xFFDDEFFF);
-        shade.setColor(0xFF130D1D);
+        shade.setColor(0xFFF1F8FF);
         animator.setInterpolator(new PathInterpolator(.19f, .68f, .31f, 1f));
         animator.addUpdateListener(a -> {
             phase = (float) a.getAnimatedValue();
@@ -81,11 +81,18 @@ final class SatinPrismMotion extends Drawable {
     }
 
     void playSweep(int direction) {
-        start(SWEEP, direction, 360L);
+        // Focus illumination lands in 218ms; this independent optical glint
+        // has a little longer to cross the card without delaying navigation.
+        start(SWEEP, direction, 395L);
     }
 
     void playClick() {
-        start(CLICK, direction, 140L);
+        if (mode == CLICK && animator.isRunning()) return;
+        start(CLICK, direction, 180L);
+    }
+
+    boolean isClickPlaying() {
+        return mode == CLICK && animator.isRunning();
     }
 
     void playSoftReturn() {
@@ -115,10 +122,11 @@ final class SatinPrismMotion extends Drawable {
         if (b.isEmpty()) return;
         float w = b.width(), h = b.height();
         float r = Math.min(h / 2f, 19f * density);
-        // A linear optical decay keeps the sweep visible across the *middle*
-        // of the card. The old squared decay attenuated it before it arrived.
-        // Preset intensity remains .55; idle rendering stays zero.
-        float fade = 1f - phase;
+        // V8.4.3: hold the optical highlight through the middle of the
+        // card and decay only after it crosses. The 55% intensity preset stays
+        // unchanged. The old 1-phase fade made it nearly invisible on TV.
+        final float fade = phase < .20f ? phase / .20f
+                : (phase < .68f ? 1f : (1f - phase) / .32f);
         int save = canvas.save();
         canvas.clipPath(clip);
         if (mode == SWEEP) {
@@ -126,32 +134,37 @@ final class SatinPrismMotion extends Drawable {
             float position = direction > 0 ? (-.18f + 1.36f * phase)
                     : (1.18f - 1.36f * phase);
             float center = b.left + position * w;
-            float strip = w * .22f;
+            float strip = w * .245f;
             matrix.setScale(strip * 2f, 1f);
             matrix.postTranslate(center - strip, 0f);
             opticalGradient.setLocalMatrix(matrix);
             optical.setAlpha(Math.round(255f * REFLECTION_INTENSITY
-                    * Math.min(1f, phase * 6f) * fade * globalAlpha / 255f));
+                    * fade * globalAlpha / 255f));
             canvas.drawRect(center - strip, b.top, center + strip, b.bottom, optical);
 
             // Optical micro-refraction: low-alpha painted strip, not live blur.
             matrix.setScale(strip * 1.5f, 1f);
             matrix.postTranslate(center - strip * .75f, 0f);
             microGradient.setLocalMatrix(matrix);
-            micro.setAlpha(Math.round(255f * .23f * fade * globalAlpha / 255f));
+            micro.setAlpha(Math.round(255f * .25f * fade * globalAlpha / 255f));
             canvas.drawRect(center - strip * .75f, b.top + .08f*h,
                     center + strip * .75f, b.bottom - .08f*h, micro);
 
             // Fresnel/Crystal edge trace: short top glint; never a second focus rim.
-            edge.setAlpha(Math.round(255f * .36f * Math.min(1f,phase*5f)
-                    * fade * globalAlpha / 255f));
+            edge.setAlpha(Math.round(255f * .42f * fade * globalAlpha / 255f));
             canvas.drawLine(b.left + r, b.top + density,
                     b.right - r, b.top + density, edge);
         } else if (mode == CLICK) {
-            // Instant tactile acknowledgement; launch remains synchronous.
-            shade.setAlpha(Math.round(255f * .08f * (float)Math.sin(Math.PI*phase)
+            // Visual cue starts on DPAD_CENTER/ENTER key-down, BEFORE the
+            // regular click opens the app. No app launch is artificially held.
+            // This cannot control a third-party app's activity transition.
+            float pulse = (float) Math.sin(Math.PI * phase);
+            shade.setAlpha(Math.round(255f * .15f * pulse
                     * globalAlpha / 255f));
             canvas.drawRoundRect(b.left,b.top,b.right,b.bottom,r,r,shade);
+            edge.setAlpha(Math.round(255f * .52f * pulse
+                    * globalAlpha / 255f));
+            canvas.drawLine(b.left+r, b.top+density, b.right-r, b.top+density, edge);
         } else if (mode == RETURN) {
             // Single quiet optical settle. Never replays directional sweep on Back.
             edge.setAlpha(Math.round(255f * .23f * (1f-phase)
