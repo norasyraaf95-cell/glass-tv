@@ -919,7 +919,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             this.reducedMotion = reducedMotion;
             // One animation timeline synchronizes all THREE stationary light
             // layers. Retarget from current intensity on rapid DPAD reversal.
-            lightAnimator.setDuration(218L); // 65% focus responsiveness preset.
+            lightAnimator.setDuration(SatinTiming.FOCUS_ILLUMINATION_MS); // 65% focus responsiveness preset.
             lightAnimator.setInterpolator(new PathInterpolator(.20f, .0f, .22f, 1f));
             lightAnimator.addUpdateListener(a -> applyLight((float) a.getAnimatedValue()));
 
