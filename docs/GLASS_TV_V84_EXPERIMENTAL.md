@@ -12,10 +12,11 @@
 - Previous V8.4.1 test ID: `com.gathin.tvhome.referencev781v841`
 - V8.4.2 test ID: `com.gathin.tvhome.referencev781v842`
 - V8.4.3 visibility-test ID: `com.gathin.tvhome.referencev781v843`
-- **Current V8.4.4 topbar-parity test ID:** `com.gathin.tvhome.referencev781v844` (does not replace stable or earlier experiments)
+- V8.4.4 topbar-parity test ID: `com.gathin.tvhome.referencev781v844`
+- **Current V8.4.5 prayer/bridge test ID:** `com.gathin.tvhome.referencev781v845` (does not replace stable or earlier experiments)
 - GitHub-hosted debug signing keys may differ between builds. A new test package avoids update-signature conflicts.
 - Stable reference build ID: `com.gathin.tvhome.referencev781`. The user's **installed topbar launcher** is `com.gathin.tvhome.referencev781top` — leave it untouched.
-- Current fix-test version name: `2.9.8.4.4-topbar-parity-experimental`
+- Current fix-test version name: `2.9.8.4.5-prayer-bridge-experimental`
 - Do not set this build as the default HOME launcher.
 - To roll back, simply open the already installed V7.8.1 launcher;
   uninstalling the experimental package does not uninstall the stable package.
@@ -32,7 +33,7 @@ For an exact visual comparison, copy the owner's original, unmodified assets int
 the *experimental* package external files directory after the experimental APK
 has been installed:
 
-`/sdcard/Android/data/com.gathin.tvhome.referencev781v844/files/`
+`/sdcard/Android/data/com.gathin.tvhome.referencev781v845/files/`
 
 The user's original assets currently exist at
 `/sdcard/Android/data/com.gathin.tvhome.referencev781top/files/`, and were
@@ -128,6 +129,71 @@ Weather OK toggle/windy cloud, five dock tiles, app mappings and return focus
 all behave as the installed variant.
 
 No claims of physical-TV visual identity or performance are made by CI alone.
+
+## V8.4.5: Prayer API, moving bridge, OK transition (2026-11-19)
+
+User testing confirmed: original `referencev781top` shows Prayer Times,
+V8.4.4's fresh package shows `--:--`; a Windows laptop can fetch the SGR01
+API (30 valid November 2026 records); the TV has correct Malaysia date and
+timezone and can ping the API. None of that proves HTTPS succeeds *from* TV.
+Previously the widget swallowed all download errors and retried only after
+30 minutes.
+
+V8.4.5:
+- Logs request/success/failure under `GlassTV.Prayer` (use
+  `adb logcat -d -b main -s GlassTV.Prayer:I`).
+- Rechecks failed prayer requests every two minutes while Home is resumed,
+  rather than every 30 minutes. Weather and original topbar code are unchanged.
+- Accepts an **optional, user-fetched official SGR01 JSON** at the experimental
+  package external path `prayer_sgr01.json` as a current-month cache seed.
+  It validates response size, current Malaysia month, today's date, all five
+  real times and at least 25 entries, and keeps trying HTTPS.
+  It must NOT be installed as a hardcoded year-long timetable.
+- Changes bridge to a bounded short silver glint with symmetric ease-in-out,
+  not an extending solid line.
+- Gives the OK cue a visible initial pulse and asks the Android TV 10
+  Activity system for a 180ms crossfade (two compatible best-effort APIs).
+  Apps still launch immediately, with no artificial delay. Firmware or
+  SmartTube can override both requests; a guaranteed full-screen crossfade
+  is NOT claimed.
+
+### Installing the original visual assets (Windows PowerShell)
+
+```powershell
+.\adb.exe install "$env:USERPROFILE\Downloads\glass-tv-v8.4.5-prayer-bridge.apk"
+.\adb.exe shell "mkdir -p /sdcard/Android/data/com.gathin.tvhome.referencev781v845/files/ && cp -r /sdcard/Android/data/com.gathin.tvhome.referencev781top/files/. /sdcard/Android/data/com.gathin.tvhome.referencev781v845/files/"
+```
+
+### Verified real-data fallback (only if TV fetch fails)
+
+Download JSON **from the actual SGR01 API** using the connected Windows laptop,
+not from an invented or stale schedule. The user already checked November 2026
+and confirmed the endpoint returns 30 entries with today's real prayer times.
+Use a fresh month parameter after November:
+
+```powershell
+Invoke-WebRequest "https://api.waktusolat.online/api/solat/SGR01?month=11&year=2026" -OutFile "$env:USERPROFILE\Downloads\prayer_sgr01.json"
+.\adb.exe push "$env:USERPROFILE\Downloads\prayer_sgr01.json" /sdcard/Android/data/com.gathin.tvhome.referencev781v845/files/prayer_sgr01.json
+.\adb.exe shell am force-stop com.gathin.tvhome.referencev781v845
+.\adb.exe shell am start -n com.gathin.tvhome.referencev781v845/com.gathin.tvhome.MainActivity
+.\adb.exe logcat -d -b main -s GlassTV.Prayer:I
+```
+
+The direct external file is accepted only for the current Malaysia month. If
+an updated month is needed, fetch fresh official data and replace this file.
+Do not copy private app settings via root, change DNS, set a new HOME launcher,
+or modify the original `referencev781top`.
+
+### Physical TV acceptance
+
+- [ ] Weather + Prayer Floating Prism visuals, date, wallpaper and dock
+      pixel-identical to installed `referencev781top`
+- [ ] Accurate Prayer Times and current pink highlight appear, with origin
+      logged as `HTTPS` or `verified external API file`
+- [ ] Bridge is a tiny travelling glint, not an extending white connector
+- [ ] SmartTube launches immediately, even if Android ignores the requested fade
+- [ ] No stutter during rapid D-pad input, no idle loops
+- [ ] Repeat after app Back and after reboot
 
 ## Implemented as first experimental pass
 
