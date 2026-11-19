@@ -1,0 +1,56 @@
+name: Glass TV V8.4.7 — isolated visible-cue APK
+
+on:
+  push:
+    branches:
+      - glass-tv-v847-visible-launch-cue-development
+    paths:
+      - '.github/workflows/v847-candidate-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    name: Verify and package V8.4.7 without device install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python regression
+        run: python3 -m unittest discover -s tests -v
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Android tests and APK candidate
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      - name: Verify distinct V8.4.7 package and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="launcher/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$APK" > /tmp/v847-badging.txt
+          grep -F "package: name='com.gathin.tvhome.referencev781v847' versionCode='31' versionName='2.9.8.4.7-visible-launch-cue-experimental'" /tmp/v847-badging.txt
+          cp "$APK" GlassTV_V8.4.7_experimental.apk
+          sha256sum GlassTV_V8.4.7_experimental.apk > GlassTV_V8.4.7_sha256.txt
+      - name: Upload isolated experimental APK (never install)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlassTV-V8.4.7-visible-cue-candidate
+          path: |
+            GlassTV_V8.4.7_experimental.apk
+            GlassTV_V8.4.7_sha256.txt
+          if-no-files-found: error
+          retention-days: 30
