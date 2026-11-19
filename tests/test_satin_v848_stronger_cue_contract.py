@@ -9,8 +9,8 @@ JAVA = ROOT / "launcher/app/src/main/java/com/gathin/tvhome"
 class V848CueContractTest(unittest.TestCase):
     def test_distinct_package_not_installed_v847(self):
         gradle = (ROOT / "launcher/app/build.gradle").read_text(encoding="utf-8")
-        self.assertIn("versionCode 33", gradle)
-        self.assertIn("applicationIdSuffix '.referencev781v849motion'", gradle)
+        self.assertIn("versionCode 34", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v850smarttube'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v847'", gradle)
 
     def test_visible_but_non_glowing_premium_cue(self):
