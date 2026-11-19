@@ -10,10 +10,11 @@
 - Branch: `glass-tv-v8.4-performance-experimental`
 - Original first-pass test ID: `com.gathin.tvhome.referencev781v84`
 - Previous V8.4.1 test ID: `com.gathin.tvhome.referencev781v841`
-- **Current V8.4.2 test ID:** `com.gathin.tvhome.referencev781v842` (does not replace V7.8.1 or earlier tests)
+- V8.4.2 test ID: `com.gathin.tvhome.referencev781v842`
+- **Current V8.4.3 visibility-test ID:** `com.gathin.tvhome.referencev781v843` (does not replace stable or earlier experiments)
 - GitHub-hosted debug signing keys may differ between builds. A new test package avoids update-signature conflicts.
 - Stable reference build ID: `com.gathin.tvhome.referencev781`. The user's **installed topbar launcher** is `com.gathin.tvhome.referencev781top` — leave it untouched.
-- Current fix-test version name: `2.9.8.4.2-satin-prism-motion-activation-experimental`
+- Current fix-test version name: `2.9.8.4.3-satin-prism-visibility-experimental`
 - Do not set this build as the default HOME launcher.
 - To roll back, simply open the already installed V7.8.1 launcher;
   uninstalling the experimental package does not uninstall the stable package.
@@ -30,7 +31,7 @@ For an exact visual comparison, copy the owner's original, unmodified assets int
 the *experimental* package external files directory after the experimental APK
 has been installed:
 
-`/sdcard/Android/data/com.gathin.tvhome.referencev781v842/files/`
+`/sdcard/Android/data/com.gathin.tvhome.referencev781v843/files/`
 
 The user's original assets currently exist at
 `/sdcard/Android/data/com.gathin.tvhome.referencev781top/files/`, and were
@@ -69,6 +70,29 @@ relaunch V8.4.2 and verify the TV log:
 Expected startup line: `Satin enabled=true reducedMotion=false`.
 Actual DPAD transitions should then report `Dock focus ... playSweep=true`.
 Measure visual difference and performance on physical TV; CI is not a substitute.
+
+## V8.4.3 visual check after user footage (2026-11-19)
+
+Physical-TV video showed that the V8.4.2 55% sweep was visually very subtle
+and the Android cross-app transition was not perceptible. V8.4.3 adjusts the
+**sweep envelope**, not the 55% intensity setting: optical peak lasts through
+the centre of the card before fading. The thin Light Bridge similarly stays
+visible while traversing the gap. Artwork, tile positions, pink rim, wallpaper
+and widgets remain completely unchanged.
+
+A lightweight silver press cue starts on DPAD_CENTER/ENTER **key-down** and
+returns false to preserve the original Android click handling. startActivity
+remains synchronous and receives the same best-effort 180ms transition
+request. This *does not guarantee* a full-screen Silk Dissolve when launching
+SmartTube or third-party apps. If a longer, guaranteed fade is required, that
+would require either target-app/system transition control or an intentional
+prelaunch delay; neither is part of this no-delay experimental build.
+
+Before adjusting TV global animation settings, read current state using
+`adb shell settings get global transition_animation_scale`,
+`adb shell settings get global window_animation_scale`, and
+`adb shell settings get global animator_duration_scale`.
+Do not change any values without knowing and retaining their original values.
 
 ## Implemented as first experimental pass
 
