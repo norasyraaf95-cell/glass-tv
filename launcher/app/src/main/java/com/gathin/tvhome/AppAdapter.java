@@ -153,6 +153,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private SatinPrismMotion activeSatinMotion;
     /** A bounded one-frame cue handoff; one pending third-party launch at a time. */
     private final FrameCueHandoff frameCueHandoff = new FrameCueHandoff();
+    /** V8.4.7 paints the SmartTube launch cue before Android switches tasks. */
+    private final VisibleLaunchCue visibleLaunchCue;
     private long lastSmartTubeClickAtMs = -1L;
     private boolean suppressNextDockSweep = true;
     private final List<Entry> items = new ArrayList<>();
@@ -174,6 +176,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.satinEnabled = !cfg.reducedMotion
                 && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
                         .getBoolean("enabled", true);
+        View rootView = ctx instanceof Activity ? ((Activity) ctx).findViewById(R.id.root) : null;
+        this.visibleLaunchCue = rootView instanceof ViewGroup
+                ? new VisibleLaunchCue((ViewGroup) rootView) : null;
         Log.i("GlassTV.V84", "Satin enabled=" + satinEnabled
                 + " reducedMotion=" + cfg.reducedMotion);
         // Tiles keep their identity across reload(), so a focused tile stays on its app instead of
@@ -545,7 +550,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         h.card.setNextFocusUpId(position == dockSize - 1
                 ? R.id.customWeatherCard : View.NO_ID);
         h.card.setOnClickListener(v -> {
-            if (frameCueHandoff.isPending()) return; // Ignore double-OK during frame handoff.
+            if (frameCueHandoff.isPending()
+                    || (visibleLaunchCue != null && visibleLaunchCue.isPending())) return;
+            // Ignore double-OK while either bounded handoff owns the launch.
             if ("org.smarttube.stable".equals(e.pkg)) {
                 long now = SystemClock.uptimeMillis();
                 if (!SatinLaunchPolicy.acceptNewPress(lastSmartTubeClickAtMs, now)) {
@@ -717,8 +724,23 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         Toast.LENGTH_SHORT).show();
             }
         };
-        boolean afterFrame = satinEnabled && frameEligible
-                && DockArtwork.get(ctx).valid
+        boolean eligible = satinEnabled && frameEligible && DockArtwork.get(ctx).valid;
+        String mode = ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
+                .getString("launch_cue_mode", LaunchCuePolicy.CINEMATIC_120);
+        if (eligible && visibleLaunchCue != null) {
+            int duration = LaunchCuePolicy.durationForMode(mode);
+            if (duration > 0) {
+                visibleLaunchCue.play(sourceCard, duration, startNow);
+                return;
+            }
+            if (LaunchCuePolicy.IMMEDIATE.equals(mode)) {
+                startNow.run();
+                return;
+            }
+        }
+        // A/B legacy V8.4.6 frame-commit strategy, or safe fallback if the
+        // optional visible cue is unavailable (e.g. no measured root view).
+        boolean afterFrame = eligible
                 && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
                         .getBoolean("frame_cue_handoff", true);
         if (afterFrame) frameCueHandoff.afterCueFrame(sourceCard, startNow);
@@ -756,6 +778,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     /** Lifecycle cleanup: no decorative animation continues while Home is hidden. */
     void suspendSatinEffects() {
         frameCueHandoff.cancel();
+        if (visibleLaunchCue != null) visibleLaunchCue.cancel();
         // A genuinely completed app handoff ends the repeat-press window.
         // Returning to Home must allow SmartTube to be opened again immediately.
         lastSmartTubeClickAtMs = -1L;
