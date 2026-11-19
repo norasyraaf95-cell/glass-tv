@@ -246,6 +246,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // Temporary V8.4.7 test control. Explicit ADB launches can select
+        // the 64ms baseline, 120ms, or 180ms cue without changing Home defaults.
+        applyLaunchCuePreview(getIntent());
         // V7.8 is a side-by-side package. The approved wallpaper, config and
         // pre-rendered dock textures are installed from ONE ZIP in this app's own files.
         // Do this before Config.load so the original wallpaper is never replaced by places.
@@ -679,6 +682,25 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     /**
+     * Source-only A/B test hook. Android's explicit Activity start via ADB:
+     * am start -n .../.MainActivity --ei glass_tv_launch_cue_ms 120
+     * 0 = old frame-aware baseline; 120 or 180 = visible prelaunch cue.
+     * Only affects this isolated experimental package, never the default Home.
+     */
+    private void applyLaunchCuePreview(Intent intent) {
+        if (intent == null || !intent.hasExtra("glass_tv_launch_cue_ms")) return;
+        int requested = intent.getIntExtra("glass_tv_launch_cue_ms", -1);
+        if (!LaunchCuePolicy.isSupported(requested)) {
+            android.util.Log.w("GlassTV.V847", "Unsupported A/B launch cue mode=" + requested);
+            return;
+        }
+        getSharedPreferences("satin_v847", MODE_PRIVATE).edit()
+                .putInt("launch_cue_ms", requested).apply();
+        android.util.Log.i("GlassTV.V847", "A/B SmartTube launch cue selected=" + requested + "ms");
+        Toast.makeText(this, "SmartTube cue: " + requested + "ms", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
      * Home pressed while Home is already in front: singleTask delivers it here, then onResume runs.
      * Back to the top with the first dock tile focused, like the stock launcher. Back from an app
      * never comes this way, so returning to the app you left from is unchanged (#118).
@@ -686,6 +708,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
+        applyLaunchCuePreview(intent);
+        if (intent != null && intent.hasCategory(Intent.CATEGORY_HOME)
+                && adapter != null) adapter.cancelPendingLaunchCue();
         if (intent == null || !intent.hasCategory(Intent.CATEGORY_HOME)) return;
         // Home pressed on Home goes back to the first app. Home pressed in another app comes back to
         // the app you left from: resetting then made the selection run from it to the first app.
