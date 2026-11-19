@@ -34,7 +34,7 @@ final class SatinPrismMotion extends Drawable {
     private final Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final LinearGradient opticalGradient = new LinearGradient(
             0f, 0f, 1f, 0f,
-            new int[]{0x00F7FCFF, 0x33F7FCFF, 0xB3F8FCFF, 0x22EFF7FF, 0x00EFF7FF},
+            new int[]{0x00F7FCFF, 0x33F7FCFF, 0xC7F8FCFF, 0x22EFF7FF, 0x00EFF7FF},
             new float[]{0f, .2f, .44f, .72f, 1f}, Shader.TileMode.CLAMP);
     private final LinearGradient microGradient = new LinearGradient(
             0f, 0f, 1f, 0f,
@@ -115,7 +115,10 @@ final class SatinPrismMotion extends Drawable {
         if (b.isEmpty()) return;
         float w = b.width(), h = b.height();
         float r = Math.min(h / 2f, 19f * density);
-        float fade = (1f - phase) * (1f - phase);
+        // A linear optical decay keeps the sweep visible across the *middle*
+        // of the card. The old squared decay attenuated it before it arrived.
+        // Preset intensity remains .55; idle rendering stays zero.
+        float fade = 1f - phase;
         int save = canvas.save();
         canvas.clipPath(clip);
         if (mode == SWEEP) {
