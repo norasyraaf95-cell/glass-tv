@@ -39,7 +39,7 @@ class SatinV845ContractTest(unittest.TestCase):
         code = (JAVA / "AppAdapter.java").read_text(encoding="utf-8")
         handoff = (JAVA / "FrameCueHandoff.java").read_text(encoding="utf-8")
         self.assertIn('ctx.startActivity(intent, options.toBundle())', code)
-        self.assertIn('overridePendingTransition(', code)
+        self.assertNotIn('overridePendingTransition(', code)
         self.assertIn('MAX_FRAME_WAIT_MS = 64L', handoff)
         self.assertNotIn('postDelayed(() -> startWithSilk', code)
 
@@ -48,7 +48,7 @@ class SatinV845ContractTest(unittest.TestCase):
         self.assertIn('"floating_prism_prayer.webp"', code)
         self.assertIn('"floating_prism_weather.webp"', code)
         gradle = GRADLE.read_text(encoding="utf-8")
-        self.assertIn("applicationIdSuffix '.referencev781v849motion'", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v850smarttube'", gradle)
 
 
 if __name__ == "__main__":
