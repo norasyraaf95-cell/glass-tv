@@ -43,7 +43,7 @@ class SatinV846MotionContractTest(unittest.TestCase):
         self.assertIn('inDock && "org.smarttube.stable".equals(e.pkg)', adapter)
         self.assertIn('"frame_cue_handoff", true', adapter)
         gradle = (ROOT / "launcher/app/build.gradle").read_text(encoding="utf-8")
-        self.assertIn("applicationIdSuffix '.referencev781v849motion'", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v851immediate'", gradle)
         self.assertNotIn("applicationIdSuffix '.referencev781v845'", gradle)
         self.assertIn("ctx.startActivity(intent, options.toBundle());", adapter)
 
