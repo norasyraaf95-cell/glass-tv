@@ -75,8 +75,11 @@ final class SatinLightBridge extends Drawable {
 
     @Override public void draw(@NonNull Canvas canvas) {
         if (!active) return;
-        float decay = (1f-progress) * (1f-progress);
-        paint.setAlpha(Math.round(255f * .42f * Math.min(1f, progress*7f) * decay));
+        // Retain the thin silver connector through the gap, then decay.
+        // No change to static glass, pink rim, tile positions or idle state.
+        float opacity = progress < .18f ? progress / .18f
+                : (progress < .67f ? 1f : (1f-progress) / .33f);
+        paint.setAlpha(Math.round(255f * .42f * opacity));
         canvas.drawLine(startX, y, startX+(endX-startX)*progress, y, paint);
     }
     @Override public void setAlpha(int alpha) {}
