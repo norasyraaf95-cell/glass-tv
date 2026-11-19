@@ -17,9 +17,9 @@ public final class LaunchCuePolicyTest {
     }
 
     @Test public void invalidConfigurationFallsBackTo120ms() {
-        assertEquals(120, LaunchCuePolicy.DEFAULT_MS);
-        assertEquals(120, LaunchCuePolicy.normalize(-1));
-        assertEquals(120, LaunchCuePolicy.normalize(4000));
+        assertEquals(180, LaunchCuePolicy.DEFAULT_MS);
+        assertEquals(180, LaunchCuePolicy.normalize(-1));
+        assertEquals(180, LaunchCuePolicy.normalize(4000));
         assertEquals(180, LaunchCuePolicy.normalize(180));
         assertEquals(0, LaunchCuePolicy.normalize(0));
     }
