@@ -6,6 +6,10 @@ on:
       - glass-tv-v847-premium-launch-cue
     paths:
       - '.github/workflows/v847-validated-candidate.yml'
+      - 'tests/test_satin_v847_premium_cue_contract.py'
+      - 'launcher/app/src/main/java/com/gathin/tvhome/PremiumLaunchCue.java'
+      - 'launcher/app/src/main/java/com/gathin/tvhome/AppAdapter.java'
+      - 'launcher/app/src/main/java/com/gathin/tvhome/MainActivity.java'
   workflow_dispatch:
 
 permissions:
