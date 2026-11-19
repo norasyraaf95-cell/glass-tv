@@ -1,0 +1,58 @@
+name: Glass TV V8.4.9 motion refinement candidate
+
+on:
+  push:
+    branches:
+      - glass-tv-v849-motion-refinement
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    name: Regression tests and isolated APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify launcher and widget regression contracts
+        run: python3 -m unittest discover -s tests -v
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run Android JVM unit tests
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testReleaseUnitTest
+      - name: Assemble independently installable preview
+        working-directory: launcher
+        run: ./gradlew --no-daemon assembleRelease
+      - name: Verify APK package and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=launcher/app/build/outputs/apk/release/app-release.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/v849-badging.txt
+          grep -F "package: name='com.gathin.tvhome.referencev781v849motion' versionCode='33' versionName='2.9.8.4.9-motion-refinement-experimental'" /tmp/v849-badging.txt
+          cp "$apk" GlassTV_V8.4.9_motion_preview.apk
+          sha256sum GlassTV_V8.4.9_motion_preview.apk > GlassTV_V8.4.9_sha256.txt
+          cat GlassTV_V8.4.9_sha256.txt
+      - name: Upload preview APK (no device installation)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlassTV-V8.4.9-motion-preview
+          path: |
+            GlassTV_V8.4.9_motion_preview.apk
+            GlassTV_V8.4.9_sha256.txt
+          retention-days: 30
+          if-no-files-found: error
