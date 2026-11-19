@@ -729,6 +729,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onStop() {
         hiddenSinceResume = true;
+        // The departing HOME window is no longer visible: now safe to
+        // clear the press overlay and stop the wallpaper video decoder.
+        if (adapter != null) adapter.finishLaunchHandoff();
+        if (cloudMotion != null) cloudMotion.onHomePause();
         handler.removeCallbacks(cacheClean);
         super.onStop();
     }
@@ -736,6 +740,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        if (adapter != null) adapter.finishLaunchHandoff();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -850,7 +855,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onPause();
         unregisterReceiver(packageReceiver);
         shahAlamWidgets.pause();
-        cloudMotion.onHomePause();
+        // Keep the last Windy Clouds frame during the app-opening fade;
+        // stopping the MediaPlayer and setting alpha=0 here caused a flash.
         handler.removeCallbacks(minuteTick);
         handler.removeCallbacks(wallTick);
         // Nothing of ours stays on screen over another app; an undecided prompt simply returns next time.
