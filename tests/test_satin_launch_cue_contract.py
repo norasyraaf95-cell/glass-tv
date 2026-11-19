@@ -19,9 +19,12 @@ class SatinLaunchCueContractTest(unittest.TestCase):
         self.assertIn("return false;", code)
         self.assertIn("if (event.getRepeatCount() == 0", code)
 
-    def test_launch_stays_immediate(self):
+    def test_other_apps_immediate_and_smarttube_wait_bounded(self):
         code = ADAPTER.read_text(encoding="utf-8")
+        handoff = (ROOT / "launcher/app/src/main/java/com/gathin/tvhome/FrameCueHandoff.java").read_text(encoding="utf-8")
         self.assertIn("ctx.startActivity(intent, options.toBundle());", code)
+        self.assertIn("else startNow.run();", code)
+        self.assertIn("MAX_FRAME_WAIT_MS = 64L", handoff)
         self.assertNotIn("postDelayed(() -> startWithSilk", code)
 
     def test_sweep_keeps_55_percent_preset(self):
