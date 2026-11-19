@@ -11,6 +11,8 @@ package com.gathin.tvhome;
 final class SatinTiming {
     static final long FOCUS_ILLUMINATION_MS = 218L;
     static final long OPTICAL_MOTION_MS = 270L;
+    // Rapid presses retarget the glint without stacking full-length animations.
+    static final long RAPID_OPTICAL_MOTION_MS = 150L;
     static final long FAST_DPAD_MS = 145L;
     static final long CLICK_MS = 180L;
     static final long RETURN_MS = 160L;
