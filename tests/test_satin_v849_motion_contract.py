@@ -11,8 +11,8 @@ def source(name):
 class V849MotionContractTest(unittest.TestCase):
     def test_separate_preview_never_replaces_installed_home(self):
         gradle = (ROOT / "launcher/app/build.gradle").read_text(encoding="utf-8")
-        self.assertIn("applicationIdSuffix '.referencev781v849motion'", gradle)
-        self.assertIn("versionCode 33", gradle)
+        self.assertIn("applicationIdSuffix '.referencev781v850smarttube'", gradle)
+        self.assertIn("versionCode 34", gradle)\n        self.assertNotIn("applicationIdSuffix '.referencev781v848handoff'", gradle)
 
     def test_fast_navigation_retargets_both_gap_and_tile_effects(self):
         adapter = source("AppAdapter.java")
@@ -36,7 +36,7 @@ class V849MotionContractTest(unittest.TestCase):
         self.assertIn("DIM_ALPHA = .14f", cue)
         self.assertNotIn("travellingHighlight", cue)
         self.assertIn("durationMs + STALL_GRACE_MS", cue)
-        self.assertIn("choreographer.removeFrameCallback(frameCallback)", cue)
+        self.assertIn("choreographer.removeFrameCallback(frameCallback)", cue)\n        self.assertIn("handoffStarted = true", cue)\n        self.assertIn("void onHomePausing()", cue)
         self.assertIn('inDock && "org.smarttube.stable".equals(e.pkg)', adapter)
 
     def test_prayer_weather_wallpaper_and_dock_assets_untouched(self):
