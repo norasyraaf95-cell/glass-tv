@@ -1,6 +1,7 @@
 package com.gathin.tvhome;
 
 import android.animation.ValueAnimator;
+import android.app.ActivityOptions;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
@@ -19,6 +20,7 @@ import android.os.SystemClock;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Gravity;
 import android.widget.FrameLayout;
@@ -168,6 +170,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.satinEnabled = !cfg.reducedMotion
                 && ctx.getSharedPreferences("satin_v84", Context.MODE_PRIVATE)
                         .getBoolean("enabled", true);
+        Log.i("GlassTV.V84", "Satin enabled=" + satinEnabled
+                + " reducedMotion=" + cfg.reducedMotion);
         // Tiles keep their identity across reload(), so a focused tile stays on its app instead of
         // its view being rebound to whatever app now sits in that slot.
         setHasStableIds(true);
@@ -647,7 +651,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 if (stable != null) {
                     stable.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                             | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-                    ctx.startActivity(stable);
+                    startWithSilk(stable);
                     return;
                 }
             } catch (RuntimeException ignored) {
@@ -659,10 +663,45 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 .setComponent(e.component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         try {
-            ctx.startActivity(i);
+            startWithSilk(i);
         } catch (Exception ex) {
             Toast.makeText(ctx, ctx.getString(R.string.cant_open, e.label), Toast.LENGTH_SHORT).show();
         }
+    }
+
+    /**
+     * Ask Android for a short activity crossfade without delaying launch by 180 ms.
+     * Another app or the OEM firmware may override the animation.
+     */
+    private void startWithSilk(Intent intent) {
+        if (!satinEnabled) {
+            ctx.startActivity(intent);
+            return;
+        }
+        ActivityOptions options = ActivityOptions.makeCustomAnimation(
+                ctx, R.anim.satin_silk_enter, R.anim.satin_silk_exit);
+        ctx.startActivity(intent, options.toBundle());
+    }
+
+    /** Preserve focus identity across Home return without replaying a sweep. */
+    void seedSatinDockFocus(RecyclerView grid, int position) {
+        if (!satinEnabled) return;
+        if (position < 0 || position >= dockSize || grid == null) {
+            previousDockFocus = -1;
+            previousDockCard = null;
+            suppressNextDockSweep();
+            return;
+        }
+        RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(position);
+        if (!(vh instanceof Holder)) return;
+        Holder h = (Holder) vh;
+        if (!h.card.isFocused()) return;
+        previousDockFocus = position;
+        previousDockCard = h.card;
+        previousDockAtMs = SystemClock.uptimeMillis();
+        // The restored tile is now the origin for the first real DPAD movement.
+        suppressNextDockSweep = false;
+        Log.i("GlassTV.V84", "Seed focused dock tile=" + position);
     }
 
     /** Prevents a stale sweep after returning from a third-party app or top widgets. */
@@ -689,6 +728,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         // must still receive the V8.4 directional reflection.
         boolean moving = SatinMotionPolicy.shouldSweep(
                 previousDockFocus, position, suppressNextDockSweep, interval);
+        Log.i("GlassTV.V84", "Dock focus " + previousDockFocus + " -> " + position
+                + " elapsedMs=" + interval + " suppressed=" + suppressNextDockSweep
+                + " playSweep=" + moving);
         if (satinBridge != null) satinBridge.stop();
         if (activeSatinMotion != null && activeSatinMotion != h.satinMotion) {
             activeSatinMotion.stop();
