@@ -719,7 +719,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             } catch (RuntimeException ex) {
                 // Once the frame callback runs this exception is asynchronous
                 // to onClick, so handle it here rather than crashing Home.
-                Log.w("GlassTV.V846", "App launch failed: " + appLabel, ex);
+                Log.w("GlassTV.V847", "App launch failed: " + appLabel, ex);
+                if (premiumLaunchCue != null) premiumLaunchCue.cancel();
+                lastSmartTubeClickAtMs = -1L;
                 Toast.makeText(ctx, ctx.getString(R.string.cant_open, appLabel),
                         Toast.LENGTH_SHORT).show();
             }
