@@ -56,6 +56,9 @@ final class PremiumLaunchCue {
     private long startedAt;
     private int selectedDurationMs;
     private boolean overlayAttached;
+    private boolean handoffStarted;
+    // Preserve the last composed HOME frame while Android draws the new app.
+    // onStop()/onResume() will release it; onPause is too early.
 
     PremiumLaunchCue(ViewGroup host) {
         this.host = host;
@@ -90,6 +93,7 @@ final class PremiumLaunchCue {
             return true;
         }
 
+        handoffStarted = false;
         pressedCard = card;
         savedScaleX = card.getScaleX();
         savedScaleY = card.getScaleY();
@@ -134,8 +138,14 @@ final class PremiumLaunchCue {
     /** Aborting via Home, navigation or onPause must NEVER launch SmartTube. */
     void cancel() {
         pendingLaunch = null;
+        handoffStarted = false;
         clearCallbacks();
         clearAppearance();
+    }
+
+    /** A completed launch keeps its final visual until Home is no longer visible. */
+    void onHomePausing() {
+        if (!handoffStarted) cancel();
     }
 
     private void finishCue(String reason) {
@@ -147,7 +157,9 @@ final class PremiumLaunchCue {
             Log.i(TAG, "Premium cue " + reason + " after "
                     + (SystemClock.uptimeMillis() - startedAt)
                     + "ms; requesting SmartTube launch");
-            // Keep the composed frame until Home's onPause to avoid a flash.
+            // Keep the composed frame across onPause; onStop clears it only
+            // after the next app has had an opportunity to draw.
+            handoffStarted = true;
             action.run();
         } else {
             Log.i(TAG, "Card detached before launch; stale OK abandoned");
