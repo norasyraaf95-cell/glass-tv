@@ -52,6 +52,7 @@ class SatinV846MotionContractTest(unittest.TestCase):
         policy = self.text("SatinLaunchPolicy.java")
         self.assertIn("SatinLaunchPolicy.acceptNewPress(", adapter)
         self.assertIn("lastSmartTubeClickAtMs = now", adapter)
+        self.assertIn("lastSmartTubeClickAtMs = -1L;", adapter)
         self.assertIn("REPEAT_GUARD_MS = 450L", policy)
         self.assertIn("nowMs - previousAtMs >= REPEAT_GUARD_MS", policy)
 
