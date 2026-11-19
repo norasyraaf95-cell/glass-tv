@@ -796,7 +796,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final int returnSlot = lastFocused;
         grid.post(() -> {
             int pos = adapter.positionOf(returnKey);
-            focusTile(pos >= 0 ? pos : returnSlot);
+            int restored = pos >= 0 ? pos : returnSlot;
+            focusTile(restored);
+            // A pre-existing focus may not emit onFocusChange on Home return.
+            // Seed the origin for the next genuine DPAD transition, without a
+            // reflection on Home entry itself.
+            adapter.seedSatinDockFocus(grid, restored);
             // Quiet one-shot return to the last tile; no wallpaper or dock movement.
             adapter.playSatinReturn(grid);
             tilesReady = true;
