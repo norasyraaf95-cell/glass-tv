@@ -9,10 +9,11 @@
 
 - Branch: `glass-tv-v8.4-performance-experimental`
 - Original first-pass test ID: `com.gathin.tvhome.referencev781v84`
-- **Current V8.4.1 fix-test ID:** `com.gathin.tvhome.referencev781v841` (separate from both installed V7.8.1 and the first experiment)
+- Previous V8.4.1 test ID: `com.gathin.tvhome.referencev781v841`
+- **Current V8.4.2 test ID:** `com.gathin.tvhome.referencev781v842` (does not replace V7.8.1 or earlier tests)
 - GitHub-hosted debug signing keys may differ between builds. A new test package avoids update-signature conflicts.
 - Stable reference build ID: `com.gathin.tvhome.referencev781`. The user's **installed topbar launcher** is `com.gathin.tvhome.referencev781top` — leave it untouched.
-- Current fix-test version name: `2.9.8.4.1-satin-prism-focus-fix-experimental`
+- Current fix-test version name: `2.9.8.4.2-satin-prism-motion-activation-experimental`
 - Do not set this build as the default HOME launcher.
 - To roll back, simply open the already installed V7.8.1 launcher;
   uninstalling the experimental package does not uninstall the stable package.
@@ -29,7 +30,7 @@ For an exact visual comparison, copy the owner's original, unmodified assets int
 the *experimental* package external files directory after the experimental APK
 has been installed:
 
-`/sdcard/Android/data/com.gathin.tvhome.referencev781v841/files/`
+`/sdcard/Android/data/com.gathin.tvhome.referencev781v842/files/`
 
 The user's original assets currently exist at
 `/sdcard/Android/data/com.gathin.tvhome.referencev781top/files/`, and were
@@ -49,6 +50,25 @@ or substitute visually similar assets. Access/copying may depend on the TV's
 Android/ADB permissions. If the files are unavailable, the existing native
 V7.7 fallback may appear: **stop the visual test** rather than accepting that
 as a valid V8.4-versus-V7.8.1 comparison.
+
+## V8.4.2 root cause verified (2026-11-19)
+
+On the physical Mi TV Stick, the V8.4.1 diagnostic log showed
+`GlassTV.V84: Satin enabled=false reducedMotion=true` although the copied
+`config.json` contained `"reduced_motion":false`.
+
+`Config.load()` parsed the boolean correctly but its final `new Config(...)`
+hardcoded `true` in the reducedMotion argument. V8.4.2 passes the effective
+`reducedMotion` variable instead. It still honours explicit reduced motion
+when users set the JSON field to true. A Python source regression check now
+guards the call site.
+
+After copying the same original assets into the V8.4.2 external-files directory,
+relaunch V8.4.2 and verify the TV log:
+`adb logcat -d -b main -s GlassTV.V84:I`
+Expected startup line: `Satin enabled=true reducedMotion=false`.
+Actual DPAD transitions should then report `Dock focus ... playSweep=true`.
+Measure visual difference and performance on physical TV; CI is not a substitute.
 
 ## Implemented as first experimental pass
 
