@@ -89,6 +89,9 @@ final class SatinPrismMotion extends Drawable {
     void playClick() {
         if (mode == CLICK && animator.isRunning()) return;
         start(CLICK, direction, 180L);
+        // Start the acknowledgment visibly on the first drawable frame.
+        // No wait on the main thread; app launch still happens on normal click.
+        animator.setCurrentPlayTime(38L);
     }
 
     boolean isClickPlaying() {
