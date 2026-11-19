@@ -27,6 +27,8 @@ import androidx.annotation.NonNull;
 final class SatinPrismMotion extends Drawable {
     private static final int NONE = 0, SWEEP = 1, CLICK = 2, RETURN = 3;
     private static final float REFLECTION_INTENSITY = .55f;
+    private static final PathInterpolator OPTICAL_EASE = new PathInterpolator(.42f, 0f, .58f, 1f);
+    private static final PathInterpolator PRESS_EASE = new PathInterpolator(.19f, .68f, .31f, 1f);
 
     private final Paint optical = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint micro = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -57,7 +59,7 @@ final class SatinPrismMotion extends Drawable {
         edge.setStrokeWidth(Math.max(.7f, .65f * density));
         edge.setColor(0xFFDDEFFF);
         shade.setColor(0xFFF1F8FF);
-        animator.setInterpolator(new PathInterpolator(.19f, .68f, .31f, 1f));
+        animator.setInterpolator(PRESS_EASE);
         animator.addUpdateListener(a -> {
             phase = (float) a.getAnimatedValue();
             invalidateSelf();
@@ -81,14 +83,16 @@ final class SatinPrismMotion extends Drawable {
     }
 
     void playSweep(int direction) {
-        // Focus illumination lands in 218ms; this independent optical glint
-        // has a little longer to cross the card without delaying navigation.
-        start(SWEEP, direction, 395L);
+        // Focus illumination lands first; this sweep settles alongside
+        // the Satin Light Bridge without delaying navigation.
+        animator.setInterpolator(OPTICAL_EASE);
+        start(SWEEP, direction, SatinTiming.OPTICAL_MOTION_MS);
     }
 
     void playClick() {
         if (mode == CLICK && animator.isRunning()) return;
-        start(CLICK, direction, 180L);
+        animator.setInterpolator(PRESS_EASE);
+        start(CLICK, direction, SatinTiming.CLICK_MS);
         // Start the acknowledgment visibly on the first drawable frame.
         // No wait on the main thread; app launch still happens on normal click.
         animator.setCurrentPlayTime(38L);
@@ -99,7 +103,8 @@ final class SatinPrismMotion extends Drawable {
     }
 
     void playSoftReturn() {
-        start(RETURN, direction, 160L);
+        animator.setInterpolator(PRESS_EASE);
+        start(RETURN, direction, SatinTiming.RETURN_MS);
     }
 
     void stop() {
