@@ -1,9 +1,9 @@
-name: Glass TV Crystal Clear V2 - frost and satin
+name: Glass TV Crystal Clear Home-ready
 
 on:
   push:
     branches:
-      - crystal-clear-frosted-development
+      - crystal-clear-v2-home-ready-20261124
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-preview:
-    name: Build Crystal Clear V2 independently
+    name: Build Crystal Clear HOME-safe APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,13 +37,13 @@ jobs:
           apk=launcher/app/build/outputs/apk/release/app-release.apk
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
-          grep -F "package: name='com.gathin.tvhome.crystalclearv2' versionCode='37' versionName='2.9.8.5.2-crystal-clear-v2-preview'" /tmp/crystal-badging.txt
-          cp "$apk" GlassTV_CrystalClear_V2_Preview.apk
-          sha256sum GlassTV_CrystalClear_V2_Preview.apk > GlassTV_CrystalClear_V2_sha256.txt
+          grep -F "package: name='com.gathin.tvhome.crystalclearhome' versionCode='38' versionName='2.9.8.5.3-crystal-clear-home'" /tmp/crystal-badging.txt
+          cp "$apk" GlassTV_CrystalClear_Home.apk
+          sha256sum GlassTV_CrystalClear_V2_Preview.apk > GlassTV_CrystalClear_Home_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
-          name: GlassTV-Crystal-Clear-V2
+          name: GlassTV-Crystal-Clear-Home
           path: |
             GlassTV_CrystalClear_V2_Preview.apk
             GlassTV_CrystalClear_V2_sha256.txt
