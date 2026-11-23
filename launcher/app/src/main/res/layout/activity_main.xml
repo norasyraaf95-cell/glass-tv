@@ -166,7 +166,7 @@
                         android:includeFontPadding="false"
                         android:format12Hour="a"
                         android:format24Hour=""
-                        android:textColor="#E6FFFFFF"
+                        android:textColor="#FFBCFCFF"
                         android:textSize="19sp"
                         android:fontFamily="@font/outfit"
                         android:fontVariationSettings="'wght' 550" />
@@ -277,7 +277,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Prayer Times"
-                    android:textColor="#FFFFFFFF"
+                    android:textColor="#FF0A2B44"
                     android:textSize="14sp"
                     android:fontFamily="@font/outfit"
                     android:fontVariationSettings="'wght' 600"
@@ -286,7 +286,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Shah Alam · SGR01"
-                    android:textColor="#CBE5D5EF"
+                    android:textColor="#FF3A7896"
                     android:textSize="10sp"
                     android:fontFamily="@font/outfit"
                     android:maxLines="1" />
@@ -309,43 +309,43 @@
                 android:baselineAligned="false">
                 <TextView android:id="@+id/prayerFajr" android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:gravity="center" android:text="Fajr&#10;--:--"
-                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#FF123951"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
                     android:layout_width="1dp"
                     android:layout_height="23dp"
-                    android:background="#75FFFFFF"
+                    android:background="#695C92A5"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerDhuhr" android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:gravity="center" android:text="Dhuhr&#10;--:--"
-                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#FF123951"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
                     android:layout_width="1dp"
                     android:layout_height="23dp"
-                    android:background="#75FFFFFF"
+                    android:background="#695C92A5"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerAsr" android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:gravity="center" android:text="Asr&#10;--:--"
-                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#FF123951"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
                     android:layout_width="1dp"
                     android:layout_height="23dp"
-                    android:background="#75FFFFFF"
+                    android:background="#695C92A5"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerMaghrib" android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:gravity="center" android:text="Maghrib&#10;--:--"
-                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#FF123951"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
                 <View
                     android:layout_width="1dp"
                     android:layout_height="23dp"
-                    android:background="#75FFFFFF"
+                    android:background="#695C92A5"
                     android:importantForAccessibility="no" />
                 <TextView android:id="@+id/prayerIsha" android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:gravity="center" android:text="Isha&#10;--:--"
-                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#E5FFFFFF"
+                    android:textSize="12sp" android:lineSpacingExtra="2dp" android:textColor="#FF123951"
                     android:fontFamily="@font/outfit" android:includeFontPadding="false" />
             </LinearLayout>
         </LinearLayout>
@@ -381,7 +381,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="--°C"
-                    android:textColor="#FFFFFFFF"
+                    android:textColor="#FF0A2B44"
                     android:textSize="22sp"
                     android:fontFamily="@font/outfit"
                     android:fontVariationSettings="'wght' 700"
@@ -392,7 +392,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Shah Alam"
-                    android:textColor="#DEFFFFFF"
+                    android:textColor="#FF315B73"
                     android:textSize="10sp"
                     android:fontFamily="@font/outfit"
                     android:singleLine="true"
@@ -405,7 +405,7 @@
                     android:layout_marginTop="1dp"
                     android:text="WINDY · ON"
                     android:visibility="gone"
-                    android:textColor="#FFDFB7EC"
+                    android:textColor="#FF167E9B"
                     android:textSize="8sp"
                     android:fontFamily="@font/outfit"
                     android:singleLine="true" />
