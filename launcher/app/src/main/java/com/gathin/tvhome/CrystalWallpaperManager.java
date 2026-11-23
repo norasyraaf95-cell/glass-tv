@@ -24,6 +24,11 @@ final class CrystalWallpaperManager {
     static File staged(Context ctx) { return new File(dir(ctx), STAGED); }
     static File original(Context ctx) { return new File(dir(ctx), CrystalAppearance.BASE_WALLPAPER); }
 
+    static void ensureOriginal(Context ctx) throws Exception {
+        File current=active(ctx), baseline=original(ctx);
+        if(current.isFile() && !baseline.exists()) copyFile(current,baseline,MAX_BYTES);
+    }
+
     static File stage(Context ctx, Uri uri) throws Exception {
         File dir = dir(ctx);
         if (dir == null || (!dir.exists() && !dir.mkdirs())) throw new IOException("No storage");
