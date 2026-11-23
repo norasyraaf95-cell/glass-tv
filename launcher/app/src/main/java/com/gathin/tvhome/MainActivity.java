@@ -94,6 +94,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View ambient;
     /** LOCKED Option B 470ms magnetic footprint, below dock cards. */
     private MagneticSpotlightView magneticSpotlight;
+    private DockDecoration crystalTray;
+    private CrystalAppearance savedAppearance, workingAppearance;
+    private CrystalControlCenter controlCenter;
+    private int wallpaperAccent = 0xFF9FF7FF;
+    private final Rect appearanceFocusRect = new Rect();
+    private static final int PICK_WALLPAPER = 7411;
+    private static final int PICK_THEME = 7412;
     /** The focus: one dark shape gliding between tiles and pills (see Glider). */
     private Glider glider;
     /** Whether the glider is on the top menu, so a move down travels dark. */
@@ -248,6 +255,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        savedAppearance = CrystalAppearance.load(this);
+        workingAppearance = savedAppearance.copy();
         // Temporary V8.4.7 test control. Explicit ADB launches can select
         // the 64ms baseline, 120ms, or 180ms cue without changing Home defaults.
         applyLaunchCuePreview(getIntent());
@@ -256,7 +265,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Do this before Config.load so the original wallpaper is never replaced by places.
         // Keep V8.5.1's installed artwork and files untouched in the original package.
         // Crystal preview renders its own light material and needs no old asset ZIP.
-        if (!getPackageName().startsWith("com.gathin.tvhome.crystalclear"))
+        if (!getPackageName().startsWith("com.gathin.tvhome.crystalclear")
+                && !getPackageName().startsWith("com.gathin.tvhome.crystalcontrol"))
             V78AssetInstaller.prepare(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
@@ -311,6 +321,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // Install alongside the old launcher: no system component or existing Home is changed.
         shahAlamWidgets = new ShahAlamWidgets(this);
+        shahAlamWidgets.setAppearance(workingAppearance);
         cloudMotion = findViewById(R.id.cloudMotion);
         customCloudToggle = findViewById(R.id.customCloudToggle);
         // Crystal Clear V2: weather remains LIVE, but it is no longer a video toggle.
@@ -388,6 +399,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.setHasFixedSize(true);
         grid.setItemAnimator(null);
         DockDecoration tray = new DockDecoration(COLUMNS, density);
+        crystalTray = tray;
+        tray.setSpotlight(magneticSpotlight, grid);
         grid.addItemDecoration(tray);
         // The top-right buttons line up with the dock, which is only known once the tiles are laid out.
         grid.getViewTreeObserver().addOnGlobalLayoutListener(this::alignTopButtons);
@@ -424,6 +437,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         adapter = new AppAdapter(this, this, COLUMNS, cfg);
         grid.setAdapter(adapter);
+        applyCrystalAppearance(workingAppearance);
 
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
@@ -483,10 +497,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
             return true;
         });
-        btnSettings.setOnClickListener(v -> open(systemIntent(Settings.ACTION_SETTINGS)));
+        // Press gear to open the hidden Crystal Control Center. Long-press = Android Settings.
+        btnSettings.setOnClickListener(v -> openCrystalControlCenter());
         btnSettings.setOnLongClickListener(v -> {
-            if (!moduleCards) return false;   // off: a long press does nothing, as before the feature
-            showModuleCards();
+            open(systemIntent(Settings.ACTION_SETTINGS));
             return true;
         });
 
@@ -576,6 +590,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         android.graphics.Bitmap old = wallBitmap;
         wallBitmap = bmp;
+        wallpaperAccent = CrystalAppearance.sampleWallpaperTint(bmp);
+        if (workingAppearance != null) applyCrystalAppearance(workingAppearance);
         if (fade && old != null && !reducedMotion) {
             android.graphics.drawable.TransitionDrawable t = new android.graphics.drawable.TransitionDrawable(new android.graphics.drawable.Drawable[]{
                     new android.graphics.drawable.BitmapDrawable(getResources(), old),
@@ -914,7 +930,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.offsetDescendantRectToMyCoords(card, r);
         // VIDEO-LOCKED Option B: smooth light migrates beneath 5 stationary dock cards.
         // On restore/home return it snaps to its known card, never sweeps from offscreen.
-        if (position < COLUMNS) magneticSpotlight.focus(r, resuming);
+        if (position < COLUMNS && "magnetic".equals(workingAppearance.motion)) magneticSpotlight.focus(r, resuming);
         else magneticSpotlight.hide();
         float pad = 6f * density;        // matches GlassView's glow inset
         float w = card.getWidth() * AppAdapter.FOCUS_SCALE + 2 * pad;
