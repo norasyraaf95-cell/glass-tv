@@ -53,33 +53,33 @@ final class PremiumGlassDrawable extends Drawable {
         // covered the blurred wallpaper. Keep the dusk colours visible beneath.
         dark.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
-                        ? new int[]{0x77453660, 0x8B312548, 0x9A201D35}
-                        : new int[]{0x4A48335E, 0x4D35284F, 0x5C2C2247},
+                        ? new int[]{0xABE5F9FC, 0xC5D2F2F8, 0xAAC5E5E8}
+                        : new int[]{0xBEEFFAFF, 0xD7EAF8FC, 0xC1C6EFF7},
                 new float[]{0f, .48f, 1f}, Shader.TileMode.CLAMP));
         // Wide diffuse highlight across the top of the glass, no sharp white border.
         reflection.setShader(new LinearGradient(0f, 0f, 0f, 1f,
                 dock
-                        ? new int[]{0x57FFF4FF, 0x19E4D8FF, 0x00FFFFFF}
-                        : new int[]{0x35FFF4FF, 0x14E9DFFF, 0x00FFFFFF},
+                        ? new int[]{0xA8FFFFFF, 0x3EFFFFFF, 0x00FFFFFF}
+                        : new int[]{0xB4FFFFFF, 0x55FFFFFF, 0x00FFFFFF},
                 new float[]{0f, .39f, .87f}, Shader.TileMode.CLAMP));
         lowerGlow.setShader(new LinearGradient(0f, 0f, 0f, 1f,
-                dock ? new int[]{0x00000000, 0x00FFA2E4, 0x18FF7DD2}
-                        : new int[]{0x00000000, 0x00FFA2E4, 0x0DFFA6E5},
+                dock ? new int[]{0x00000000, 0x00C5F8FF, 0x34A0F5FF}
+                        : new int[]{0x00000000, 0x00B5F8FF, 0x2495F4FF},
                 new float[]{0f, .68f, 1f}, Shader.TileMode.CLAMP));
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth((dock ? .72f : .64f) * density);
         rim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
-                dock ? new int[]{0xC4FFF0FF, 0x57D6C3EF, 0x38C7B0E4, 0x8CE6CFF5}
-                        : new int[]{0xA8F6E8FF, 0x52E0CDEE, 0x43C5A5D7, 0x87EDCFF2},
+                dock ? new int[]{0xF7FFFFFF, 0xBCE3FAFF, 0x77B9DCE8, 0xE8FFFFFF}
+                        : new int[]{0xFBFFFFFF, 0xB7FFFFFF, 0x84B6D9ED, 0xF6FFFFFF},
                 new float[]{0f, .28f, .73f, 1f}, Shader.TileMode.CLAMP));
         // A single anti-aliased border replaces the three concentric strokes.
         // The remaining soft halo comes from the View's colored elevation shadow.
         focusRim.setStyle(Paint.Style.STROKE);
         focusRim.setStrokeWidth(1.05f * density);
         focusRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
-                new int[]{0xECFFF0FF, 0xD8FF96D6, 0xC9DABAF4, 0xDAFFD3F2},
+                new int[]{0xFBFFFFFF, 0xD3A1F9FF, 0xBF6BDAF2, 0xDEFFFFFF},
                 new float[]{0f, .28f, .72f, 1f}, Shader.TileMode.CLAMP));
-        focusWash.setColor(0x20F348B5);
+        focusWash.setColor(0x2969E4F5);
         focusFade = ValueAnimator.ofFloat(0f, 1f);
         focusFade.setDuration(195L);
         focusFade.setInterpolator(new PathInterpolator(.2f, .72f, .25f, 1f));
