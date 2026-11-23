@@ -38,6 +38,9 @@ jobs:
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
           grep -F "package: name='com.gathin.tvhome.crystalclearmagneticbhome' versionCode='40' versionName='2.9.8.5.5-magnetic-b-home'" /tmp/crystal-badging.txt
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump xmltree "$apk" AndroidManifest.xml > /tmp/magnetic-b-home-manifest.txt
+          grep -F 'android.intent.category.HOME' /tmp/magnetic-b-home-manifest.txt
+          grep -F 'android.intent.category.DEFAULT' /tmp/magnetic-b-home-manifest.txt
           cp "$apk" GlassTV_Magnetic_B_Home.apk
           sha256sum GlassTV_Magnetic_B_Home.apk > GlassTV_Magnetic_B_Home_sha256.txt
       - name: Upload separate APK for manual TV testing
