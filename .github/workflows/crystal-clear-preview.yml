@@ -23,6 +23,8 @@ jobs:
         with:
           packages: platforms;android-34 build-tools;34.0.0
       - uses: gradle/actions/setup-gradle@v4
+      - name: Check Crystal Clear V2 safety and interaction contracts
+        run: python3 -m unittest discover -s tests -p 'test_crystal_clear_v2_contract.py' -v
       - name: Compile and test Android
         working-directory: launcher
         run: |
