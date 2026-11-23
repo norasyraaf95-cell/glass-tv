@@ -147,7 +147,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     /** Experimental motion never modifies the five V7.8.1 source artwork bitmaps. */
     private final boolean satinEnabled;
     /** Option B replaces V8.5.1's narrow Satin sweep, without changing app launch rules. */
-    private final boolean magneticFocusOnly;
+    private boolean magneticFocusOnly;
+    private CrystalAppearance appearance = new CrystalAppearance();
     private int previousDockFocus = -1;
     private long previousDockAtMs;
     private View previousDockCard;
@@ -174,7 +175,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.reducedMotion = cfg.reducedMotion;
-        this.magneticFocusOnly = ctx.getPackageName().startsWith("com.gathin.tvhome.crystalclearmagneticb");
+        appearance = CrystalAppearance.load(ctx);
+        this.magneticFocusOnly = !"satin".equals(appearance.motion);
         View rootView = ctx instanceof Activity ? ((Activity) ctx).findViewById(R.id.root) : null;
         premiumLaunchCue = rootView instanceof ViewGroup
                 ? new PremiumLaunchCue((ViewGroup) rootView) : null;
@@ -397,6 +399,23 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         return new Holder(v, listener, reducedMotion, this);
     }
 
+    /** Apply a live draft to visible cards without rebinding or stealing remote focus. */
+    void setAppearance(CrystalAppearance settings, RecyclerView grid) {
+        appearance = settings.copy();
+        magneticFocusOnly = !"satin".equals(appearance.motion);
+        if (grid == null) return;
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            RecyclerView.ViewHolder vh = grid.getChildViewHolder(grid.getChildAt(i));
+            if (!(vh instanceof Holder)) continue;
+            Holder h = (Holder) vh;
+            int pos = h.getBindingAdapterPosition();
+            if (pos < 0 || pos >= dockSize) continue;
+            h.dockGlass.setAppearance(appearance);
+            h.card.setForeground(satinEnabled && !magneticFocusOnly ? h.satinMotion : null);
+            h.card.invalidate();
+        }
+    }
+
     @Override
     public void onBindViewHolder(@NonNull Holder h, int position) {
         Entry e = items.get(position);
@@ -445,6 +464,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             // Native glass, icon and wordmark are separate layers. No WebP tile
             // stretches during focus; this fixes the blur seen on V7.5 and the
             // flat/lavender fill and oval glow seen on V7.6.
+            h.dockGlass.setAppearance(appearance);
             h.dockGlass.setBrand(position);
             h.dockGlass.syncFocus(focused);
             h.card.setBackground(h.dockGlass);
