@@ -1,9 +1,9 @@
-name: Glass TV Magnetic Spotlight Option B
+name: Glass TV Magnetic Spotlight B HOME-ready
 
 on:
   push:
     branches:
-      - magnetic-spotlight-option-b-development
+      - magnetic-spotlight-b-home-ready-20261124
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-preview:
-    name: Build isolated 470ms Magnetic Spotlight preview
+    name: Build separate HOME-ready Magnetic Spotlight B
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,15 +37,15 @@ jobs:
           apk=launcher/app/build/outputs/apk/release/app-release.apk
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
-          grep -F "package: name='com.gathin.tvhome.crystalclearmagneticb' versionCode='39' versionName='2.9.8.5.4-magnetic-b-preview'" /tmp/crystal-badging.txt
-          cp "$apk" GlassTV_Magnetic_Spotlight_B.apk
-          sha256sum GlassTV_Magnetic_Spotlight_B.apk > GlassTV_Magnetic_B_sha256.txt
+          grep -F "package: name='com.gathin.tvhome.crystalclearmagneticbhome' versionCode='40' versionName='2.9.8.5.5-magnetic-b-home'" /tmp/crystal-badging.txt
+          cp "$apk" GlassTV_Magnetic_B_Home.apk
+          sha256sum GlassTV_Magnetic_B_Home.apk > GlassTV_Magnetic_B_Home_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
-          name: GlassTV-Magnetic-Spotlight-B
+          name: GlassTV-Magnetic-B-Home
           path: |
-            GlassTV_Magnetic_Spotlight_B.apk
-            GlassTV_Magnetic_B_sha256.txt
+            GlassTV_Magnetic_B_Home.apk
+            GlassTV_Magnetic_B_Home_sha256.txt
           retention-days: 30
           if-no-files-found: error
