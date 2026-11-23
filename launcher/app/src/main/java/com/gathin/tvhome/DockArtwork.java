@@ -24,7 +24,8 @@ final class DockArtwork {
     private DockArtwork(Context context) {
         // Crystal Clear uses native wallpaper-aligned glass, not old purple V7.8 WebP art.
         // This also protects the preview if a user later copies their backup assets into it.
-        if (context.getPackageName().startsWith("com.gathin.tvhome.crystalclear")) {
+        if ((context.getPackageName().startsWith("com.gathin.tvhome.crystalclear")
+                || context.getPackageName().startsWith("com.gathin.tvhome.crystalcontrol"))) {
             focusHalo = null;
             reflections = null;
             valid = false;
