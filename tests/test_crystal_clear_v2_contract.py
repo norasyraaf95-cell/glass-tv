@@ -11,10 +11,10 @@ class CrystalClearV2Contracts(unittest.TestCase):
     def test_separate_preview_not_home(self):
         build = (ROOT / "launcher/app/build.gradle").read_text()
         manifest = (SRC / "AndroidManifest.xml").read_text()
-        self.assertIn("applicationIdSuffix '.crystalclearmagneticbhome'", build)
-        self.assertIn("versionCode 40", build)
-        self.assertIn('android.intent.category.HOME', manifest)
-        self.assertIn('android.intent.category.DEFAULT', manifest)
+        self.assertIn("applicationIdSuffix '.crystalcontrolpreview'", build)
+        self.assertIn("versionCode 41", build)
+        self.assertNotIn('android.intent.category.HOME', manifest)
+        self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
         self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
 
     def test_weather_updates_but_never_toggles_cloud_video(self):
@@ -44,9 +44,41 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn("fromX = positionX;", view)
         self.assertIn("return;", view)
         self.assertIn("static final long HANDOFF_MS = MagneticSpotlightView.TRANSITION_MS;", dock)
-        self.assertIn("magneticSpotlight.focus(r, resuming);", main)
+        self.assertIn('magneticSpotlight.focus(r, resuming);', main)
         self.assertIn("magneticSpotlight.stop();", main)
         self.assertIn("<com.gathin.tvhome.MagneticSpotlightView", layout)
+
+    def test_control_center_gear_is_hidden_and_remote_driven(self):
+        main = (JAVA / "MainActivity.java").read_text()
+        control = (JAVA / "CrystalControlCenter.java").read_text()
+        self.assertIn("btnSettings.setOnClickListener(v -> openCrystalControlCenter());",main)
+        self.assertIn("open(systemIntent(Settings.ACTION_SETTINGS));",main)
+        self.assertIn("new Dialog(activity)",control)
+        for item in ("Widgets", "Dock Glass", "Magnetic Spotlight", "Movement",
+                     "Adaptive Glass", "Wallpaper", "Themes"):
+            self.assertIn('"' + item + '"',control)
+        self.assertIn("host.preview(draft.copy());",control)
+        self.assertIn("host.cancel();",control)
+
+    def test_theme_and_wallpaper_are_reversible(self):
+        state = (JAVA / "CrystalAppearance.java").read_text()
+        file = (JAVA / "CrystalWallpaperManager.java").read_text()
+        self.assertIn('"appearance.json"',state)
+        self.assertIn('"CrystalClear_Theme_Backup.json"',state)
+        self.assertIn('"wallpaper_original.jpg"',state)
+        self.assertIn("void save(Context c)",state)
+        self.assertIn("static void commit(Context ctx)",file)
+        self.assertIn("static void cancel(Context ctx)",file)
+        self.assertIn("copyFile(active,orig,MAX_BYTES)",file)
+
+    def test_magnetic_light_is_above_glass_below_cards(self):
+        dock=(JAVA/"DockDecoration.java").read_text()
+        light=(JAVA/"MagneticSpotlightView.java").read_text()
+        self.assertLess(dock.index("c.drawRoundRect(rect, radius, radius, band);"),
+                        dock.index("spotlight.drawInTray(c, parent);"))
+        self.assertIn("setDrawingHost(grid)",dock)
+        self.assertIn("drawInTray(Canvas canvas, View grid)",light)
+        self.assertIn("fromX = positionX;",light)
 
     def test_all_native_dock_labels_white(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
@@ -59,7 +91,7 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn('startsWith("com.gathin.tvhome.crystalclear")', dock)
         self.assertIn("valid = false;", dock)
         tray = (JAVA / "DockDecoration.java").read_text()
-        self.assertIn("blur.draw(c, parent, rect, radius, 1f);", tray)
+        self.assertIn("spotlight.drawInTray(c, parent);", tray)
         self.assertIn("c.drawRoundRect(rect, radius, radius, crystalRim);", tray)
 
 
