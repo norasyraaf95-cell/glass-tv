@@ -13,7 +13,7 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.view.View;
-import android.view.animation.PathInterpolator;
+
 
 import androidx.annotation.NonNull;
 
@@ -26,7 +26,7 @@ import androidx.annotation.NonNull;
  * No bitmaps are allocated, decoded or blurred in onDraw.
  */
 final class LiquidCrystalDockDrawable extends Drawable {
-    static final long HANDOFF_MS = 240L;
+    static final long HANDOFF_MS = MagneticSpotlightView.TRANSITION_MS;
 
     private final View host;
     private final float density;
@@ -79,7 +79,11 @@ final class LiquidCrystalDockDrawable extends Drawable {
 
         focusFade.setDuration(HANDOFF_MS);
         // Short, controllable easing, with no bounce or spring overshoot.
-        focusFade.setInterpolator(new PathInterpolator(.20f, 0f, .20f, 1f));
+        // Match video Option B precisely: 470ms quintic smootherstep, no bounce.
+        focusFade.setInterpolator(input -> {
+            float t = Math.max(0f, Math.min(1f, input));
+            return t * t * t * (t * (t * 6f - 15f) + 10f);
+        });
         focusFade.addUpdateListener(animation -> {
             focusFraction = (float) animation.getAnimatedValue();
             invalidateSelf();
