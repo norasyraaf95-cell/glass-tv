@@ -252,7 +252,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // V7.8 is a side-by-side package. The approved wallpaper, config and
         // pre-rendered dock textures are installed from ONE ZIP in this app's own files.
         // Do this before Config.load so the original wallpaper is never replaced by places.
-        V78AssetInstaller.prepare(this);
+        // Keep V8.5.1's installed artwork and files untouched in the original package.
+        // Crystal preview renders its own light material and needs no old asset ZIP.
+        if (!getPackageName().endsWith(".crystalclearpreview"))
+            V78AssetInstaller.prepare(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
@@ -287,9 +290,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // only background artwork changes, not prayer/weather native content.
             String skinName = id == R.id.customPrayerCard
                     ? "floating_prism_prayer.webp" : "floating_prism_weather.webp";
-            android.graphics.drawable.Drawable skin = FloatingPrismTopBarDrawable.fromFiles(
-                    getExternalFilesDir(null), skinName);
-            card.setBackground(skin != null ? skin : new PremiumGlassDrawable(card, false));
+            // The original purple WebP is deliberately never used for Crystal Clear.
+            card.setBackground(new PremiumGlassDrawable(card, false));
             Backdrop.watch(card);
             card.setOutlineProvider(new android.view.ViewOutlineProvider() {
                 @Override public void getOutline(View view, android.graphics.Outline outline) {
