@@ -57,16 +57,16 @@ final class LiquidCrystalDockDrawable extends Drawable {
 
         // Match the approved dark smoked-purple material, not V7.6's pale flat fill.
         smoke.setShader(new LinearGradient(0, 0, 0, 1,
-                new int[]{0xBF49315F, 0xDB2B1C42, 0xEB170F2C},
+                new int[]{0xA1F3FCFD, 0xD2D7ECEC, 0xC2CEE7E8},
                 new float[]{0f, .42f, 1f}, Shader.TileMode.CLAMP));
         topReflection.setShader(new LinearGradient(0, 0, 0, 1,
-                new int[]{0x79FFF5FF, 0x1DDFD0FA, 0x00FFFFFF},
+                new int[]{0xD7FFFFFF, 0x59FFFFFF, 0x00FFFFFF},
                 new float[]{0f, .30f, .80f}, Shader.TileMode.CLAMP));
         lens.setShader(new LinearGradient(0, 0, 0, 1,
-                new int[]{0x42FFF5FF, 0x22EDB9FF, 0x00E3B4FF},
+                new int[]{0x69FFFFFF, 0x35BCF8FE, 0x00FFFFFF},
                 new float[]{0f, .45f, 1f}, Shader.TileMode.CLAMP));
         focusWash.setShader(new RadialGradient(.5f, .66f, .9f,
-                new int[]{0x76F3B6FF, 0x38B878EE, 0x00C77DFF},
+                new int[]{0x79AEF8FF, 0x44B3ECF8, 0x00CEFAFF},
                 new float[]{0f, .53f, 1f}, Shader.TileMode.CLAMP));
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(1.05f * density);
@@ -90,16 +90,16 @@ final class LiquidCrystalDockDrawable extends Drawable {
         if (brand == value) return;
         brand = value;
         int[] edgeColors = value == 2
-                ? new int[]{0xBDE9DCFF, 0xC2A4BAFF, 0xA09C7CFF}
-                : new int[]{0xCFFDF0FF, 0xA0F0C3FF, 0xC2F1BAFF};
+                ? new int[]{0xF0FFFFFF, 0xC0A9EDF8, 0xB1FFFFFF}
+                : new int[]{0xF0FFFFFF, 0xC0A9EDF8, 0xB1FFFFFF};
         rim.setShader(new LinearGradient(0, 0, 1, .7f, edgeColors,
                 null, Shader.TileMode.CLAMP));
         bottomSheen.setShader(new LinearGradient(0, 0, 1, 0,
-                value == 2 ? new int[]{0x00C99CFF, 0xD188BFFF, 0xCDA8F6FF}
-                        : new int[]{0x00DE79FF, 0x99D88CFF, 0xDBF592FE},
+                value == 2 ? new int[]{0x0097F6FF, 0xD1B7F8FF, 0xCDE0FFFF}
+                        : new int[]{0x0097F6FF, 0xD1B7F8FF, 0xCDE0FFFF},
                 null, Shader.TileMode.CLAMP));
         focusEdge.setShader(new LinearGradient(0, 0, 1, 1,
-                new int[]{0xF8FFF2FF, 0xE3E6B1FF, 0xEECF85FF},
+                new int[]{0xF8FFFFFF, 0xE3B5F7FF, 0xEE79E5FF},
                 null, Shader.TileMode.CLAMP));
         invalidateSelf();
     }
