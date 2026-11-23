@@ -38,6 +38,8 @@ final class PremiumGlassDrawable extends Drawable {
     private final Paint focusWash = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix matrix = new Matrix();
     private float opacity = 1f;
+    private final Paint tintOverlay = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private CrystalAppearance appearance = new CrystalAppearance();
     // Selected full-card brand artwork is rendered by a lightweight ImageView underneath.
     // In this mode only paint the animated focus, never another glass border on the logo image.
     private boolean artworkOnlyFocus;
@@ -89,6 +91,13 @@ final class PremiumGlassDrawable extends Drawable {
         });
     }
 
+    void setAppearance(CrystalAppearance value) {
+        appearance = value.copy();
+        tintOverlay.setColor(appearance.widgetTint);
+        focusWash.setColor(appearance.widgetAccent);
+        invalidateSelf();
+    }
+
     @Override public void draw(@NonNull Canvas canvas) {
         bounds.set(getBounds());
         if (bounds.width() <= 0f || bounds.height() <= 0f) return;
@@ -118,20 +127,21 @@ final class PremiumGlassDrawable extends Drawable {
 
         // The native launcher already prepares a blurred wallpaper at half resolution on
         // background worker; use its exact screen-aligned texture instead of a fake flat fill.
-        softened.draw(canvas, owner, bounds, radius, opacity);
+        float glassOpacity = dock ? opacity : opacity * Math.min(1f, appearance.widgetOpacity / 72f);
+        softened.draw(canvas, owner, bounds, radius, glassOpacity);
 
         // Both shaders are unit-height, so local matrices position the gradient at this card.
         matrix.setScale(1f, bounds.height());
         matrix.postTranslate(0f, bounds.top);
         dark.getShader().setLocalMatrix(matrix);
-        dark.setAlpha(Math.round(255f * opacity));
+        dark.setAlpha(Math.round(255f * glassOpacity));
         canvas.drawRoundRect(bounds, radius, radius, dark);
 
         reflection.getShader().setLocalMatrix(matrix);
-        reflection.setAlpha(Math.round(255f * opacity));
+        reflection.setAlpha(Math.round(255f * glassOpacity));
         canvas.drawRoundRect(bounds, radius, radius, reflection);
         lowerGlow.getShader().setLocalMatrix(matrix);
-        lowerGlow.setAlpha(Math.round(255f * opacity));
+        lowerGlow.setAlpha(Math.round(255f * glassOpacity));
         canvas.drawRoundRect(bounds, radius, radius, lowerGlow);
 
         inner.set(bounds);
@@ -140,8 +150,10 @@ final class PremiumGlassDrawable extends Drawable {
         matrix.setScale(bounds.width(), bounds.height());
         matrix.postTranslate(bounds.left, bounds.top);
         rim.getShader().setLocalMatrix(matrix);
+        tintOverlay.setAlpha(Math.round(27f * glassOpacity));
+        canvas.drawRoundRect(bounds,radius,radius,tintOverlay);
         // Fade the normal pale rim OUT as the magenta focus fades IN: no double outline.
-        rim.setAlpha(Math.round(255f * opacity * (dock ? 1f - focusAmount : 1f)));
+        rim.setAlpha(Math.round(255f * glassOpacity * (dock ? 1f - focusAmount : 1f)));
         if (!dock || focusAmount < .999f)
             canvas.drawRoundRect(inner, radius - inset, radius - inset, rim);
 
