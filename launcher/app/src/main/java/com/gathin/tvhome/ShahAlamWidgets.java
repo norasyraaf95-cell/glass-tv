@@ -82,9 +82,9 @@ final class ShahAlamWidgets {
         float dp = activity.getResources().getDisplayMetrics().density;
         activePrayer = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xD9ED319F, 0xE9EA278D, 0xC3D7278A});
+                new int[]{0xE87AF4F6, 0xE85FDCEB, 0xD87DCDF4});
         activePrayer.setCornerRadius(11 * dp);
-        activePrayer.setStroke(Math.max(1, Math.round(.8f * dp)), 0x93FFB2DF);
+        activePrayer.setStroke(Math.max(1, Math.round(.8f * dp)), 0xC7FFFFFF);
         for (TextView slot : prayerSlots) {
             slot.setPadding(0, 5, 0, 5);
         }
@@ -280,7 +280,7 @@ final class ShahAlamWidgets {
         prayerTime.setText("");
         for (int i = 0; i < prayerSlots.length; i++) {
             prayerSlots[i].setText(PRAYER_LABELS[i] + "\n--:--");
-            prayerSlots[i].setTextColor(0xDDFFFFFF);
+            prayerSlots[i].setTextColor(0xFF10344D);
             prayerSlots[i].setBackground(null);
         }
         try {
@@ -325,7 +325,7 @@ final class ShahAlamWidgets {
             int selected = current >= 0 ? current : upcoming;
             if (selected >= 0) {
                 prayerSlots[selected].setBackground(activePrayer);
-                prayerSlots[selected].setTextColor(0xFFFFFFFF);
+                prayerSlots[selected].setTextColor(0xFF08283F);
             }
         } catch (Exception e) {
             prayerName.setText("Schedule unavailable");
