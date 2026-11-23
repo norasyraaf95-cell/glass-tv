@@ -97,6 +97,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private DockDecoration crystalTray;
     private CrystalAppearance savedAppearance, workingAppearance;
     private CrystalControlCenter controlCenter;
+    private android.graphics.Bitmap wallpaperBeforeCenter;
     private int wallpaperAccent = 0xFF9FF7FF;
     private final Rect appearanceFocusRect = new Rect();
     private static final int PICK_WALLPAPER = 7411;
@@ -271,6 +272,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
+        wallDecoder.execute(() -> { try { CrystalWallpaperManager.ensureOriginal(this); }
+                catch (Exception ex) { android.util.Log.w("Crystal.Wallpaper", "Backup skipped", ex); } });
         COLUMNS = 5; // Reference V2: four apps and functional Apps tile on one dock row.
         reducedMotion = cfg.reducedMotion;
         liveTvPkg = cfg.liveTvPackage;
@@ -989,6 +992,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void openCrystalControlCenter() {
         if (controlCenter != null && controlCenter.isShowing()) return;
+        wallpaperBeforeCenter=wallBitmap;
         controlCenter = new CrystalControlCenter(this,new CrystalControlCenter.Host() {
             @Override public void preview(CrystalAppearance draft) {applyCrystalAppearance(draft);}
             @Override public void save(CrystalAppearance draft) {saveCrystalSettings(draft);}
@@ -1038,6 +1042,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             CrystalWallpaperManager.commit(this);
             savedAppearance=draft.copy();
             savedAppearance.save(this);
+            wallpaperBeforeCenter=wallBitmap;
             applyCrystalAppearance(savedAppearance);
             Toast.makeText(this,"Crystal theme saved",Toast.LENGTH_SHORT).show();
         } catch(Exception ex) {
@@ -1052,6 +1057,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if(image.isFile()) {
             android.graphics.Bitmap bmp=decodeWallpaper(image);
             if(bmp!=null)setWallpaper(bmp,false);
+        } else if(wallpaperBeforeCenter != null) {
+            setWallpaper(wallpaperBeforeCenter,false);
+        } else if(wallView != null) {
+            wallView.setImageDrawable(null);
+            wallBitmap=null;
+            root.setBackgroundColor(Color.BLACK);
         }
         blurTarget=-1;
         applyCrystalAppearance(savedAppearance);
@@ -1060,6 +1071,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override protected void onActivityResult(int request,int result,Intent intent) {
         super.onActivityResult(request,result,intent);
         if(result!=RESULT_OK || intent==null || intent.getData()==null) return;
+        if(controlCenter == null || !controlCenter.isShowing()) return;
         if(request==PICK_THEME) {
             try {
                 CrystalAppearance imported=CrystalAppearance.importTheme(this,intent.getData());
