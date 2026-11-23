@@ -1,0 +1,49 @@
+name: Glass TV Crystal Clear frosted preview
+
+on:
+  push:
+    branches:
+      - crystal-clear-frosted-development
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-preview:
+    name: Build isolated Crystal Clear APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platforms;android-34 build-tools;34.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile and test Android
+        working-directory: launcher
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testReleaseUnitTest assembleRelease
+      - name: Verify independent APK identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=launcher/app/build/outputs/apk/release/app-release.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
+          grep -F "package: name='com.gathin.tvhome.crystalclearpreview' versionCode='36' versionName='2.9.8.5.1-crystal-clear-preview'" /tmp/crystal-badging.txt
+          cp "$apk" GlassTV_CrystalClear_Preview.apk
+          sha256sum GlassTV_CrystalClear_Preview.apk > GlassTV_CrystalClear_sha256.txt
+      - name: Upload separate APK for manual TV testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlassTV-Crystal-Clear-Preview
+          path: |
+            GlassTV_CrystalClear_Preview.apk
+            GlassTV_CrystalClear_sha256.txt
+          retention-days: 30
+          if-no-files-found: error
