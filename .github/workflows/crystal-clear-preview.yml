@@ -1,9 +1,9 @@
-name: Glass TV Crystal Clear Home-ready
+name: Glass TV Magnetic Spotlight Option B
 
 on:
   push:
     branches:
-      - crystal-clear-v2-home-ready-20261124
+      - magnetic-spotlight-option-b-development
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-preview:
-    name: Build Crystal Clear HOME-safe APK
+    name: Build isolated 470ms Magnetic Spotlight preview
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,13 +37,13 @@ jobs:
           apk=launcher/app/build/outputs/apk/release/app-release.apk
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
-          grep -F "package: name='com.gathin.tvhome.crystalclearhome' versionCode='38' versionName='2.9.8.5.3-crystal-clear-home'" /tmp/crystal-badging.txt
-          cp "$apk" GlassTV_CrystalClear_Home.apk
-          sha256sum GlassTV_CrystalClear_Home.apk > GlassTV_CrystalClear_Home_sha256.txt
+          grep -F "package: name='com.gathin.tvhome.crystalclearmagneticb' versionCode='39' versionName='2.9.8.5.4-magnetic-b-preview'" /tmp/crystal-badging.txt
+          cp "$apk" GlassTV_Magnetic_Spotlight_B.apk
+          sha256sum GlassTV_CrystalClear_Home.apk > GlassTV_Magnetic_B_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
-          name: GlassTV-Crystal-Clear-Home
+          name: GlassTV-Magnetic-Spotlight-B
           path: |
             GlassTV_CrystalClear_Home.apk
             GlassTV_CrystalClear_Home_sha256.txt
