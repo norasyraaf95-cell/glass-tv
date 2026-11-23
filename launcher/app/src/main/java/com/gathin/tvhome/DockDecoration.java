@@ -28,6 +28,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final Paint topGlaze = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint baseSheen = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix gradientMatrix = new Matrix();
+    private final Matrix edgeMatrix = new Matrix();
+    private final Matrix underMatrix = new Matrix();
     /** A fixed, non-animated optical rail under all 5 cards (part of approved static reference). */
     private final Paint staticRail = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint diffuseUnderRail = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -53,6 +55,12 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         baseSheen.setStyle(Paint.Style.STROKE);
         baseSheen.setStrokeWidth(1.5f * density);
         baseSheen.setStrokeCap(Paint.Cap.ROUND);
+        baseSheen.setShader(new LinearGradient(0f,0f,1f,0f,
+                new int[]{0x00FFFFFF,0xE7C8FCFF,0xEAFFFFFF,0xC7A4F8FF,0x00FFFFFF},
+                new float[]{0f,.20f,.50f,.80f,1f},Shader.TileMode.CLAMP));
+        diffuseUnderRail.setShader(new LinearGradient(0f,0f,0f,1f,
+                new int[]{0x569EF5FF,0x1986E9FA,0x0089E9FA},
+                new float[]{0f,.46f,1f},Shader.TileMode.CLAMP));
         crystalRim.setStyle(Paint.Style.STROKE);
         crystalRim.setStrokeWidth(1.35f * density);
         crystalRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
@@ -134,9 +142,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         crystalRim.getShader().setLocalMatrix(gradientMatrix);
         crystalRim.setAlpha(Math.round(255f * appearance.dockBorder / 100f));
         c.drawRoundRect(rect, radius, radius, crystalRim);
-        baseSheen.setShader(new LinearGradient(rect.left, rect.bottom, rect.right, rect.bottom,
-                new int[]{0x00FFFFFF, 0xE7C8FCFF, 0xEAFFFFFF, 0xC7A4F8FF, 0x00FFFFFF},
-                new float[]{0f, .20f, .50f, .80f, 1f}, Shader.TileMode.CLAMP));
+        edgeMatrix.setScale(rect.width(),1f);
+        edgeMatrix.postTranslate(rect.left,rect.bottom);
+        baseSheen.getShader().setLocalMatrix(edgeMatrix);
         baseSheen.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
         c.drawLine(rect.left + radius, rect.bottom - 2f*density,
                 rect.right - radius, rect.bottom - 2f*density, baseSheen);
@@ -144,9 +152,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         // Subtle icy underglow: stationary, with no tracking highlight.
         float top = rect.bottom - 1f * density;
         float bottom = top + 13f * density;
-        diffuseUnderRail.setShader(new LinearGradient(0f, top, 0f, bottom,
-                new int[]{0x569EF5FF, 0x1986E9FA, 0x0089E9FA},
-                new float[]{0f, .46f, 1f}, Shader.TileMode.CLAMP));
+        underMatrix.setScale(1f,Math.max(1f,bottom-top));
+        underMatrix.postTranslate(0f,top);
+        diffuseUnderRail.getShader().setLocalMatrix(underMatrix);
         diffuseUnderRail.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
         c.drawRect(rect.left + 18f * density, top,
                 rect.right - 18f * density, bottom, diffuseUnderRail);
