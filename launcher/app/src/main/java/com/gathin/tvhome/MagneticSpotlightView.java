@@ -7,6 +7,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.os.Build;
 import android.graphics.RadialGradient;
 import android.graphics.Rect;
 import android.graphics.Shader;
@@ -48,6 +51,15 @@ public final class MagneticSpotlightView extends View {
         setFocusable(false);
         setClickable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        // The locked Python reference adds light to the underlying pixels; ordinary
+        // SrcOver tint can actually DARKEN bright alpine grass, so use additive blending.
+        if (Build.VERSION.SDK_INT >= 29) {
+            broadPaint.setBlendMode(android.graphics.BlendMode.PLUS);
+            corePaint.setBlendMode(android.graphics.BlendMode.PLUS);
+        } else {
+            broadPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));
+            corePaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));
+        }
         setAppearance(new CrystalAppearance());
         travel.setDuration(TRANSITION_MS);
         travel.setInterpolator(SMOOTHERSTEP);
@@ -77,17 +89,23 @@ public final class MagneticSpotlightView extends View {
     void setAppearance(CrystalAppearance theme) {
         mode = theme.motion;
         duration = Math.max(150, Math.min(800, theme.duration));
-        softnessScale = .75f + theme.spotlightSoftness / 130f;
+        // 65 = exact reference footprint. Changing softness scales both light masks.
+        softnessScale = 1f + (theme.spotlightSoftness - 65f) / 150f;
+        // Reference mask geometry: +/-128px wide, +/-28px tall for ~200x80 cards.
+        // Original locked video uses additive BGR (54,69,61) broad and (112,116,93)
+        // core, not an opaque cyan wash. Preserve its luminance, shift only the hue.
         int c = theme.spotlightTint;
-        float strength = Math.max(0f, Math.min(1f, theme.spotlightIntensity / 100f));
-        broadShader = new RadialGradient(0f, 0f, 1f,
-                new int[]{tint(c,.50f*strength),tint(c,.39f*strength),
-                        tint(c,.19f*strength),tint(c,.04f*strength),tint(c,0f)},
-                new float[]{0f,.22f,.50f,.76f,1f}, Shader.TileMode.CLAMP);
-        coreShader = new RadialGradient(0f, 0f, 1f,
-                new int[]{tint(c,.88f*strength),tint(c,.70f*strength),
-                        tint(c,.41f*strength),tint(c,.10f*strength),tint(c,0f)},
-                new float[]{0f,.24f,.50f,.76f,1f}, Shader.TileMode.CLAMP);
+        int broadColor = shiftReference(0xFF3D4536,c);
+        int coreColor = shiftReference(0xFF5D7470,c);
+        float strength = Math.max(0f,Math.min(1.6f,theme.spotlightIntensity / 75f));
+        broadShader = new RadialGradient(0f,0f,1f,
+                new int[]{tint(broadColor,.45f*strength),tint(broadColor,.42f*strength),
+                        tint(broadColor,.34f*strength),tint(broadColor,.19f*strength),tint(broadColor,0f)},
+                new float[]{0f,.22f,.50f,.76f,1f},Shader.TileMode.CLAMP);
+        coreShader = new RadialGradient(0f,0f,1f,
+                new int[]{tint(coreColor,.91f*strength),tint(coreColor,.77f*strength),
+                        tint(coreColor,.40f*strength),tint(coreColor,.13f*strength),tint(coreColor,0f)},
+                new float[]{0f,.22f,.50f,.76f,1f},Shader.TileMode.CLAMP);
         broadPaint.setShader(broadShader);
         corePaint.setShader(coreShader);
         if ("linear".equals(theme.easing)) travel.setInterpolator(input -> input);
@@ -98,16 +116,24 @@ public final class MagneticSpotlightView extends View {
         repaint();
     }
 
+    private static int shiftReference(int reference, int wanted) {
+        final int base=0xFF9FF7FF; // default Crystal Clear palette
+        int r=Math.max(0,Math.min(255,Color.red(reference)+(Color.red(wanted)-Color.red(base))/3));
+        int g=Math.max(0,Math.min(255,Color.green(reference)+(Color.green(wanted)-Color.green(base))/3));
+        int b=Math.max(0,Math.min(255,Color.blue(reference)+(Color.blue(wanted)-Color.blue(base))/3));
+        return Color.rgb(r,g,b);
+    }
+
     /** The card rectangle is in the root layout coordinate system. */
     void focus(Rect card, boolean snap) {
         if (card == null || card.isEmpty() || !CrystalAppearance.LOCKED.equals(mode)) return;
         float cx = card.exactCenterX();
         y = card.bottom - 1.5f * density;
         float w = card.width(), h = card.height();
-        broadX = Math.max(1f, w * 1.34f * softnessScale);
-        broadY = Math.max(1f, h * .64f * softnessScale);
-        coreX = Math.max(1f, w * .78f * softnessScale);
-        coreY = Math.max(1f, h * .34f * softnessScale);
+        broadX = Math.max(1f, w * .64f * softnessScale);
+        broadY = Math.max(1f, h * .35f * softnessScale);
+        coreX = Math.max(1f, w * .64f * softnessScale);
+        coreY = Math.max(1f, h * .35f * softnessScale);
         visibleFoot = true;
         if (snap || !hasPosition) {
             travel.cancel();
