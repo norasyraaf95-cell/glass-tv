@@ -49,6 +49,8 @@ final class LiquidCrystalDockDrawable extends Drawable {
     private final ValueAnimator focusFade = ValueAnimator.ofFloat(0f, 1f);
     private float focusFraction;
     private float opacity = 1f;
+    private CrystalAppearance appearance = new CrystalAppearance();
+    private final Paint tintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private int brand = -1;
 
     LiquidCrystalDockDrawable(View host) {
@@ -90,6 +92,26 @@ final class LiquidCrystalDockDrawable extends Drawable {
         });
     }
 
+    void setAppearance(CrystalAppearance value) {
+        appearance = value.copy();
+        tintPaint.setColor(appearance.dockTint);
+        int tint = appearance.spotlightTint;
+        focusWash.setShader(new RadialGradient(.5f,.66f,.9f,
+                new int[]{CrystalAppearance.mix(tint,0xFFFFFFFF,.30f),
+                        CrystalAppearance.mix(tint,0xFFFFFFFF,.08f), tint},
+                new float[]{0f,.53f,1f},Shader.TileMode.CLAMP));
+        focusEdge.setShader(new LinearGradient(0f,0f,1f,1f,
+                new int[]{0xF8FFFFFF, tint, 0xEEFFFFFF},
+                null,Shader.TileMode.CLAMP));
+        int ms = "instant".equals(appearance.motion) ? 0 : appearance.duration;
+        focusFade.setDuration(ms);
+        if ("linear".equals(appearance.easing)) focusFade.setInterpolator(i->i);
+        else if ("soft".equals(appearance.easing))
+            focusFade.setInterpolator(new android.view.animation.DecelerateInterpolator(1.4f));
+        else focusFade.setInterpolator(i->{float t=Math.max(0f,Math.min(1f,i));return t*t*t*(t*(t*6f-15f)+10f);});
+        invalidateSelf();
+    }
+
     void setBrand(int value) {
         if (brand == value) return;
         brand = value;
@@ -120,7 +142,12 @@ final class LiquidCrystalDockDrawable extends Drawable {
         float target = focused ? 1f : 0f;
         if (Math.abs(target - focusFraction) < .0001f) return;
         focusFade.setFloatValues(focusFraction, target);
-        focusFade.setDuration(HANDOFF_MS);
+        if ("instant".equals(appearance.motion)) {
+            focusFraction = target;
+            invalidateSelf();
+            return;
+        }
+        focusFade.setDuration(appearance.duration);
         focusFade.start();
     }
 
@@ -134,7 +161,8 @@ final class LiquidCrystalDockDrawable extends Drawable {
         float r = Math.min(h * .5f, 19f * density);
 
         // Wallpaper-aligned cached blurred glass is precomputed outside the draw loop.
-        wallpaperGlass.draw(canvas, host, frame, r, opacity);
+        float deckAlpha = Math.max(0f,Math.min(1f,appearance.dockOpacity / 58f));
+        wallpaperGlass.draw(canvas, host, frame, r, opacity * deckAlpha);
 
         matrix.setScale(1f, h);
         matrix.postTranslate(0f, frame.top);
@@ -142,9 +170,9 @@ final class LiquidCrystalDockDrawable extends Drawable {
         topReflection.getShader().setLocalMatrix(matrix);
         lens.getShader().setLocalMatrix(matrix);
 
-        smoke.setAlpha(Math.round(255 * opacity));
+        smoke.setAlpha(Math.round(255f * opacity * deckAlpha));
         canvas.drawRoundRect(frame, r, r, smoke);
-        topReflection.setAlpha(Math.round(255 * opacity));
+        topReflection.setAlpha(Math.round(255f * opacity * deckAlpha * Math.min(1f,appearance.dockReflection / 75f)));
         canvas.drawRoundRect(frame, r, r, topReflection);
 
         // Fixed, wide glass-refraction crease: never moves during focus.
@@ -155,7 +183,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         topLens.cubicTo(frame.left+.76f*w, frame.top+.30f*h,
                 frame.left+.43f*w, frame.top+.24f*h, frame.left+.08f*w, frame.top+.31f*h);
         topLens.close();
-        lens.setAlpha(Math.round(185 * opacity));
+        lens.setAlpha(Math.round(185f * opacity * deckAlpha));
         canvas.drawPath(topLens, lens);
 
         // Permanent micro-rim is part of the GLASS, not a travelling focus indicator.
@@ -164,7 +192,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         matrix.setScale(w, h);
         matrix.postTranslate(frame.left, frame.top);
         rim.getShader().setLocalMatrix(matrix);
-        rim.setAlpha(Math.round(246 * opacity));
+        rim.setAlpha(Math.round(246f * opacity * appearance.dockBorder / 84f));
         canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
                 Math.max(0f,r-.95f*density), rim);
 
@@ -174,16 +202,18 @@ final class LiquidCrystalDockDrawable extends Drawable {
         lowerCurve.cubicTo(frame.left+.40f*w, frame.bottom-.05f*h,
                 frame.left+.65f*w, frame.bottom-.12f*h, frame.right-.08f*w, frame.bottom-.17f*h);
         bottomSheen.getShader().setLocalMatrix(matrix);
-        bottomSheen.setAlpha(Math.round(170 * opacity));
+        bottomSheen.setAlpha(Math.round(170f * opacity * appearance.dockReflection / 75f));
         canvas.drawPath(lowerCurve, bottomSheen);
 
+        tintPaint.setAlpha(Math.round(18f * opacity * deckAlpha));
+        canvas.drawRoundRect(frame,r,r,tintPaint);
         if (focusFraction > .001f) {
             // Only alpha changes; the radiance is clipped to the stationary rounded tile.
             focusWash.getShader().setLocalMatrix(matrix);
             focusWash.setAlpha(Math.round(232 * opacity * focusFraction));
             canvas.drawRoundRect(frame, r, r, focusWash);
             focusEdge.getShader().setLocalMatrix(matrix);
-            focusEdge.setAlpha(Math.round(230 * opacity * focusFraction));
+            focusEdge.setAlpha(Math.round(230f * opacity * focusFraction * appearance.spotlightIntensity / 75f));
             canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
                     Math.max(0f,r-.95f*density), focusEdge);
         }
