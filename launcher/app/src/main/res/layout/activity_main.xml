@@ -31,6 +31,14 @@
         android:layout_height="match_parent"
         android:alpha="0" />
 
+    <!-- LOCKED Option B: soft pool of light beneath the dock, not a travelling ring.
+         Zero focus or click handling; background animation only. -->
+    <com.gathin.tvhome.MagneticSpotlightView
+        android:id="@+id/magneticSpotlight"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no" />
+
     <!-- Top shelf: the place's name, its country and what it is about, positioned above the dock in code.
          The width is capped in code to a share of the space between the side paddings, so the
          description wraps in a column instead of running the width of the screen. -->
