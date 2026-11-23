@@ -359,9 +359,9 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:focusable="true"
-            android:clickable="true"
+            android:clickable="false"
             android:nextFocusDown="@id/grid"
-            android:contentDescription="Shah Alam weather. Press OK to toggle cloud motion.">
+            android:contentDescription="Live Shah Alam weather">
 
             <ImageView
                 android:layout_width="31dp"
