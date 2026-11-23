@@ -910,6 +910,184 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    // ---- Crystal Control Center (separate package, never changes default Home) ----
+    private int wallpaperEffectVersion;
+
+    private void applyCrystalAppearance(CrystalAppearance raw) {
+        if (raw == null) return;
+        workingAppearance = raw.copy();
+        CrystalAppearance effective = raw.adapted(wallpaperAccent);
+        for (int id : new int[]{R.id.customPrayerCard,R.id.customWeatherCard}) {
+            View v = findViewById(id);
+            if (v != null && v.getBackground() instanceof PremiumGlassDrawable) {
+                ((PremiumGlassDrawable)v.getBackground()).setAppearance(effective);
+                v.invalidate();
+            }
+        }
+        if (shahAlamWidgets != null) shahAlamWidgets.setAppearance(effective);
+        if (crystalTray != null) {
+            crystalTray.setAppearance(effective);
+            if (grid != null) grid.invalidate();
+        }
+        if (magneticSpotlight != null) {
+            magneticSpotlight.setAppearance(effective);
+            if ("magnetic".equals(effective.motion)) {
+                View focus=getCurrentFocus();
+                if (focus != null && focus.getId()==R.id.card) {
+                    appearanceFocusRect.set(0,0,focus.getWidth(),focus.getHeight());
+                    root.offsetDescendantRectToMyCoords(focus,appearanceFocusRect);
+                    magneticSpotlight.focus(appearanceFocusRect,true);
+                }
+            } else magneticSpotlight.hide();
+        }
+        if (adapter != null) adapter.setAppearance(effective,grid);
+        applyWallpaperAppearance(raw);
+    }
+
+    private void applyWallpaperAppearance(CrystalAppearance value) {
+        if (wallView == null) return;
+        wallView.setScaleType("fit".equals(value.wallpaperFit)
+                ? android.widget.ImageView.ScaleType.FIT_CENTER
+                : android.widget.ImageView.ScaleType.CENTER_CROP);
+        android.graphics.ColorMatrix saturation=new android.graphics.ColorMatrix();
+        saturation.setSaturation(value.wallpaperSaturation/100f);
+        android.graphics.ColorMatrix brightness=new android.graphics.ColorMatrix();
+        float b=value.wallpaperBrightness/100f;
+        brightness.setScale(b,b,b,1f);
+        saturation.postConcat(brightness);
+        wallView.setColorFilter(new android.graphics.ColorMatrixColorFilter(saturation));
+        scheduleWallpaperSoftness(value.wallpaperBlur);
+    }
+
+    private int blurTarget = -1;
+    private void scheduleWallpaperSoftness(int strength) {
+        if (wallView == null || wallBitmap == null) return;
+        if (strength == blurTarget) return;
+        blurTarget = strength;
+        final int generation=++wallpaperEffectVersion;
+        final android.graphics.Bitmap base=wallBitmap;
+        if (strength <= 0) {
+            wallView.setImageBitmap(base);
+            return;
+        }
+        handler.postDelayed(() -> {
+            if (generation != wallpaperEffectVersion) return;
+            wallDecoder.execute(() -> {
+                android.graphics.Bitmap softened;
+                try { softened = CrystalWallpaperSoftener.prepare(base,strength); }
+                catch (Exception | OutOfMemoryError ex) { softened=null; }
+                final android.graphics.Bitmap result=softened;
+                handler.post(() -> {
+                    if (!isDestroyed() && generation==wallpaperEffectVersion
+                            && wallBitmap==base && result!=null && wallView!=null)
+                        wallView.setImageBitmap(result);
+                    else if(result!=null && result!=base && !result.isRecycled()) result.recycle();
+                });
+            });
+        }, 250L);
+    }
+
+    private void openCrystalControlCenter() {
+        if (controlCenter != null && controlCenter.isShowing()) return;
+        controlCenter = new CrystalControlCenter(this,new CrystalControlCenter.Host() {
+            @Override public void preview(CrystalAppearance draft) {applyCrystalAppearance(draft);}
+            @Override public void save(CrystalAppearance draft) {saveCrystalSettings(draft);}
+            @Override public void cancel() {cancelCrystalSettings();}
+            @Override public void chooseWallpaper() {launchCrystalPicker(PICK_WALLPAPER);}
+            @Override public void restoreWallpaper() {previewOriginalWallpaper();}
+            @Override public void chooseTheme() {launchCrystalPicker(PICK_THEME);}
+            @Override public void exportTheme(CrystalAppearance draft) {
+                boolean okay=CrystalAppearance.exportTheme(MainActivity.this,draft);
+                Toast.makeText(MainActivity.this,okay
+                        ? "Theme exported to this app's files" : "Theme export failed",
+                        Toast.LENGTH_SHORT).show();
+            }
+            @Override public android.graphics.Bitmap currentWallpaper() {return wallBitmap;}
+        },savedAppearance);
+        controlCenter.show();
+    }
+
+    private void launchCrystalPicker(int code) {
+        Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(code==PICK_WALLPAPER?"image/*":"*/*");
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {startActivityForResult(intent,code);}
+        catch (ActivityNotFoundException | SecurityException ex) {
+            Toast.makeText(this,"TV file picker unavailable",Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void previewOriginalWallpaper() {
+        wallDecoder.execute(() -> {
+            try {
+                File pending=CrystalWallpaperManager.stageOriginal(this);
+                android.graphics.Bitmap bmp=decodeWallpaper(pending);
+                handler.post(() -> {
+                    if (bmp!=null && !isDestroyed()) setWallpaper(bmp,false);
+                    if(controlCenter!=null)controlCenter.refreshWallpaper();
+                });
+            } catch(Exception ex) {
+                handler.post(()->Toast.makeText(this,"Original backup not yet available",Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    private void saveCrystalSettings(CrystalAppearance draft) {
+        try {
+            CrystalWallpaperManager.commit(this);
+            savedAppearance=draft.copy();
+            savedAppearance.save(this);
+            applyCrystalAppearance(savedAppearance);
+            Toast.makeText(this,"Crystal theme saved",Toast.LENGTH_SHORT).show();
+        } catch(Exception ex) {
+            Toast.makeText(this,"Could not save wallpaper: "+ex.getMessage(),Toast.LENGTH_LONG).show();
+            cancelCrystalSettings();
+        }
+    }
+
+    private void cancelCrystalSettings() {
+        CrystalWallpaperManager.cancel(this);
+        File image=CrystalWallpaperManager.active(this);
+        if(image.isFile()) {
+            android.graphics.Bitmap bmp=decodeWallpaper(image);
+            if(bmp!=null)setWallpaper(bmp,false);
+        }
+        blurTarget=-1;
+        applyCrystalAppearance(savedAppearance);
+    }
+
+    @Override protected void onActivityResult(int request,int result,Intent intent) {
+        super.onActivityResult(request,result,intent);
+        if(result!=RESULT_OK || intent==null || intent.getData()==null) return;
+        if(request==PICK_THEME) {
+            try {
+                CrystalAppearance imported=CrystalAppearance.importTheme(this,intent.getData());
+                if(controlCenter!=null)controlCenter.imported(imported);
+            } catch(Exception ex) {
+                Toast.makeText(this,"Invalid or unsupported theme",Toast.LENGTH_LONG).show();
+            }
+        } else if(request==PICK_WALLPAPER) {
+            final android.net.Uri uri=intent.getData();
+            wallDecoder.execute(() -> {
+                try {
+                    File image=CrystalWallpaperManager.stage(this,uri);
+                    android.graphics.Bitmap bmp=decodeWallpaper(image);
+                    if(bmp==null)throw new java.io.IOException("Unable to decode image");
+                    handler.post(() -> {
+                        if(isDestroyed())return;
+                        blurTarget=-1;
+                        setWallpaper(bmp,false);
+                        if(controlCenter!=null)controlCenter.refreshWallpaper();
+                    });
+                } catch(Exception ex) {
+                    handler.post(() -> Toast.makeText(this,
+                            "Wallpaper not loaded: "+ex.getMessage(),Toast.LENGTH_LONG).show());
+                }
+            });
+        }
+    }
+
     @Override
     public void onBackPressed() {
         // Home screen: Back goes nowhere.
