@@ -1,9 +1,9 @@
-# Crystal Clear frosted preview (manual TV test only)
+# Crystal Clear V2 frosted preview (manual TV test only)
 
 Based on the **identical V8.5.1 Immediate** source, with the installed launcher untouched.
 
 ## Safety
-- Preview package: `com.gathin.tvhome.crystalclearpreview`, version 36.
+- Preview package: `com.gathin.tvhome.crystalclearv2`, version 37.
 - Installed original remains `com.gathin.tvhome.referencev781v851immediate`.
 - This preview is intentionally **not** registered as a HOME app. Launch it from the Android TV apps list / Bugjaeger.
 - No package removal, debloat, or changes to existing applications.
@@ -16,10 +16,13 @@ Based on the **identical V8.5.1 Immediate** source, with the installed launcher 
 - Icy cyan active-prayer pill; never hardcode times or weather data.
 - Native frosted glass tiles with a single continuous floating tray, no purple V7.8 bitmap override.
 - White clock with cyan underline, same app links, focus navigation, and SmartTube immediate launch logic.
+- Weather displays live readings but has no button action; windy video is off on the preview.
+- Original V8.5.1 Satin directional glint and between-card bridge restored on the native glass dock.
+- Five dock titles all white (including Prime Video); textured wallpaper remains visible through lighter glass.
 
 ## Owner's wallpaper and config (after preview is installed)
 The preview app has its OWN external-files directory:
-`/sdcard/Android/data/com.gathin.tvhome.crystalclearpreview/files/`
+`/sdcard/Android/data/com.gathin.tvhome.crystalclearv2/files/`
 
 Use Bugjaeger to copy the owner-approved optimized wallpaper named `wallpaper.jpg`
 and the existing `config.json` into the PREVIEW directory only. Preserve the original TV directory:
