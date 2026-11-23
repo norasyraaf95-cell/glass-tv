@@ -80,6 +80,18 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn("drawInTray(Canvas canvas, View grid)",light)
         self.assertIn("fromX = positionX;",light)
 
+    def test_locked_video_matches_additive_light_geometry(self):
+        light = (JAVA/"MagneticSpotlightView.java").read_text()
+        shelf = (JAVA/"DockDecoration.java").read_text()
+        self.assertIn("broadPaint.setBlendMode(android.graphics.BlendMode.PLUS);",light)
+        self.assertIn("PorterDuff.Mode.ADD",light)
+        self.assertIn("w * .64f",light)
+        self.assertIn("h * .35f",light)
+        self.assertIn("0xFF3D4536",light)
+        self.assertIn("0xFF5D7470",light)
+        self.assertNotIn("new LinearGradient(rect.left, rect.bottom",shelf)
+        self.assertNotIn("new LinearGradient(0f, top, 0f, bottom",shelf)
+
     def test_all_native_dock_labels_white(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
         self.assertIn("h.label.setTextColor(Color.WHITE);", adapter)
