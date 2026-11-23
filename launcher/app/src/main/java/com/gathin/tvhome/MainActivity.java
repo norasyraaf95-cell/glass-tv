@@ -254,7 +254,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Do this before Config.load so the original wallpaper is never replaced by places.
         // Keep V8.5.1's installed artwork and files untouched in the original package.
         // Crystal preview renders its own light material and needs no old asset ZIP.
-        if (!getPackageName().endsWith(".crystalclearpreview"))
+        if (!getPackageName().startsWith("com.gathin.tvhome.crystalclear"))
             V78AssetInstaller.prepare(this);
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
