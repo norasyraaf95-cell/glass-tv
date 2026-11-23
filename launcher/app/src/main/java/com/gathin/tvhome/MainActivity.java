@@ -102,6 +102,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Rect appearanceFocusRect = new Rect();
     private static final int PICK_WALLPAPER = 7411;
     private static final int PICK_THEME = 7412;
+    private static final int EXPORT_THEME = 7413;
+    private CrystalAppearance pendingThemeExport;
     /** The focus: one dark shape gliding between tiles and pills (see Glider). */
     private Glider glider;
     /** Whether the glider is on the top menu, so a move down travels dark. */
@@ -1001,10 +1003,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             @Override public void restoreWallpaper() {previewOriginalWallpaper();}
             @Override public void chooseTheme() {launchCrystalPicker(PICK_THEME);}
             @Override public void exportTheme(CrystalAppearance draft) {
-                boolean okay=CrystalAppearance.exportTheme(MainActivity.this,draft);
-                Toast.makeText(MainActivity.this,okay
-                        ? "Theme exported to this app's files" : "Theme export failed",
-                        Toast.LENGTH_SHORT).show();
+                pendingThemeExport=draft.copy();
+                Intent export=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                export.addCategory(Intent.CATEGORY_OPENABLE);
+                export.setType("application/json");
+                export.putExtra(Intent.EXTRA_TITLE,"CrystalClear_Theme_Backup.json");
+                export.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                try {startActivityForResult(export,EXPORT_THEME);}
+                catch(ActivityNotFoundException | SecurityException ex) {
+                    boolean okay=CrystalAppearance.exportTheme(MainActivity.this,draft);
+                    Toast.makeText(MainActivity.this,okay
+                            ? "Theme backed up to launcher files (Bugjaeger)" : "Theme export failed",
+                            Toast.LENGTH_LONG).show();
+                }
             }
             @Override public android.graphics.Bitmap currentWallpaper() {return wallBitmap;}
         },savedAppearance);
@@ -1072,7 +1083,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         super.onActivityResult(request,result,intent);
         if(result!=RESULT_OK || intent==null || intent.getData()==null) return;
         if(controlCenter == null || !controlCenter.isShowing()) return;
-        if(request==PICK_THEME) {
+        if(request==EXPORT_THEME) {
+            try(java.io.OutputStream out=getContentResolver().openOutputStream(intent.getData(),"w")) {
+                if(out==null || pendingThemeExport==null)throw new java.io.IOException("No document output");
+                out.write(pendingThemeExport.toJson().toString(2)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                out.flush();
+                Toast.makeText(this,"Theme exported successfully",Toast.LENGTH_SHORT).show();
+            } catch(Exception ex) {
+                Toast.makeText(this,"Theme export failed",Toast.LENGTH_LONG).show();
+            }
+        } else if(request==PICK_THEME) {
             try {
                 CrystalAppearance imported=CrystalAppearance.importTheme(this,intent.getData());
                 if(controlCenter!=null)controlCenter.imported(imported);
