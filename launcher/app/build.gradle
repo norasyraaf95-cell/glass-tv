@@ -10,14 +10,14 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 37
-        versionName '2.9.8.5.2-crystal-clear-v2-preview'
+        versionCode 38
+        versionName '2.9.8.5.3-crystal-clear-home'
     }
 
     buildTypes {
         release {
-            // Side-by-side preview: never overwrite the already working HOME APK.
-            applicationIdSuffix '.crystalclearv2'
+            // Home-ready V2 shares visuals with preview but has its own package to protect original and preview APKs.
+            applicationIdSuffix '.crystalclearhome'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
