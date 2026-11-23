@@ -11,10 +11,10 @@ class CrystalClearV2Contracts(unittest.TestCase):
     def test_separate_preview_not_home(self):
         build = (ROOT / "launcher/app/build.gradle").read_text()
         manifest = (SRC / "AndroidManifest.xml").read_text()
-        self.assertIn("applicationIdSuffix '.crystalclearhome'", build)
-        self.assertIn("versionCode 38", build)
-        self.assertIn('android.intent.category.HOME', manifest)
-        self.assertIn('android.intent.category.DEFAULT', manifest)
+        self.assertIn("applicationIdSuffix '.crystalclearmagneticb'", build)
+        self.assertIn("versionCode 39", build)
+        self.assertNotIn('android.intent.category.HOME', manifest)
+        self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
 
     def test_weather_updates_but_never_toggles_cloud_video(self):
         main = (JAVA / "MainActivity.java").read_text()
@@ -26,11 +26,26 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn("fetchWeather()", widgets)
         self.assertIn("fetchPrayers(", widgets)
 
-    def test_original_satin_motion_restored_on_native_tiles(self):
+    def test_original_satin_swipe_suppressed_for_magnetic_b(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
-        self.assertIn("h.card.setForeground(satinEnabled ? h.satinMotion : null);", adapter)
-        self.assertIn("dockGlass.animateFocus(focused);\n                        if (focused) owner.onReferenceDockFocused(this, cardIndex);", adapter)
-        self.assertIn("satinBridge.travel(previousDockCard, h.card, rapid);", adapter)
+        self.assertIn("h.card.setForeground(satinEnabled && !magneticFocusOnly ? h.satinMotion : null);", adapter)
+        self.assertIn("magneticFocusOnly", adapter)
+        self.assertIn("dockGlass.animateFocus(focused);", adapter)
+        self.assertIn("if (!satinEnabled || magneticFocusOnly || position < 0", adapter)
+
+    def test_locked_470ms_smootherstep_magnetic_spotlight(self):
+        view = (JAVA / "MagneticSpotlightView.java").read_text()
+        dock = (JAVA / "LiquidCrystalDockDrawable.java").read_text()
+        main = (JAVA / "MainActivity.java").read_text()
+        layout = (SRC / "res/layout/activity_main.xml").read_text()
+        self.assertIn("TRANSITION_MS = 470L;", view)
+        self.assertIn("t * t * t * (t * (t * 6f - 15f) + 10f)", view)
+        self.assertIn("fromX = positionX;", view)
+        self.assertIn("return;", view)
+        self.assertIn("static final long HANDOFF_MS = MagneticSpotlightView.TRANSITION_MS;", dock)
+        self.assertIn("magneticSpotlight.focus(r, resuming);", main)
+        self.assertIn("magneticSpotlight.stop();", main)
+        self.assertIn("<com.gathin.tvhome.MagneticSpotlightView", layout)
 
     def test_all_native_dock_labels_white(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
