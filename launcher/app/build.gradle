@@ -10,14 +10,14 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 39
-        versionName '2.9.8.5.4-magnetic-b-preview'
+        versionCode 40
+        versionName '2.9.8.5.5-magnetic-b-home'
     }
 
     buildTypes {
         release {
-            // Option B animated preview installs separately and never replaces the working default Home.
-            applicationIdSuffix '.crystalclearmagneticb'
+            // Side-by-side HOME-ready Magnetic B, with a separate package to protect the old default and preview.
+            applicationIdSuffix '.crystalclearmagneticbhome'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
