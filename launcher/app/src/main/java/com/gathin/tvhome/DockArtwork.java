@@ -22,6 +22,14 @@ final class DockArtwork {
     final boolean valid;
 
     private DockArtwork(Context context) {
+        // Crystal Clear uses native wallpaper-aligned glass, not old purple V7.8 WebP art.
+        // This also protects the preview if a user later copies their backup assets into it.
+        if (context.getPackageName().endsWith(".crystalclearpreview")) {
+            focusHalo = null;
+            reflections = null;
+            valid = false;
+            return;
+        }
         File dir = context.getExternalFilesDir(null);
         Bitmap idleAtlas = decode(dir, "liquid_dock_base.webp");
         Bitmap focusAtlas = decode(dir, "liquid_focus_illumination.webp");
