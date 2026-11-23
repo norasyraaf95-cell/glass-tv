@@ -39,13 +39,13 @@ jobs:
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
           grep -F "package: name='com.gathin.tvhome.crystalclearhome' versionCode='38' versionName='2.9.8.5.3-crystal-clear-home'" /tmp/crystal-badging.txt
           cp "$apk" GlassTV_CrystalClear_Home.apk
-          sha256sum GlassTV_CrystalClear_V2_Preview.apk > GlassTV_CrystalClear_Home_sha256.txt
+          sha256sum GlassTV_CrystalClear_Home.apk > GlassTV_CrystalClear_Home_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
           name: GlassTV-Crystal-Clear-Home
           path: |
-            GlassTV_CrystalClear_V2_Preview.apk
-            GlassTV_CrystalClear_V2_sha256.txt
+            GlassTV_CrystalClear_Home.apk
+            GlassTV_CrystalClear_Home_sha256.txt
           retention-days: 30
           if-no-files-found: error
