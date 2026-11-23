@@ -43,14 +43,14 @@ final class CrystalControlCenter {
     private CrystalAppearance draft;
     private Dialog dialog;
     private LinearLayout content, navigation;
-    private String selected = "Widgets";
+    private String selected = "Appearance";
     private boolean completed;
     private final float dp;
     private final int white = Color.WHITE;
     private final int aqua = 0xFF6EF3FF;
     private final int textDim = 0xFFC2E4EF;
     private static final String[] SECTIONS = {
-            "Widgets", "Dock Glass", "Magnetic Spotlight", "Movement",
+            "Appearance", "Widgets", "Dock Glass", "Magnetic Spotlight", "Movement",
             "Adaptive Glass", "Wallpaper", "Themes"
     };
     private static final int[] COLORS = {
@@ -162,6 +162,7 @@ final class CrystalControlCenter {
         content.removeAllViews();
         addTitle(selected);
         switch(selected) {
+            case "Appearance": appearance(); break;
             case "Widgets": widgets(); break;
             case "Dock Glass": dock(); break;
             case "Magnetic Spotlight": spotlight(); break;
@@ -170,6 +171,29 @@ final class CrystalControlCenter {
             case "Wallpaper": wallpaper(); break;
             case "Themes": themes(); break;
         }
+    }
+
+    private void appearance() {
+        description("Live previews affect only this preview launcher until Save.");
+        content.addView(label("Crystal Clear · Alpine", 17, aqua, true));
+        description("Wallpaper, widgets and five dock tiles remain in their fixed positions.");
+        content.addView(button("Preview Current Home for 2 seconds", () -> {
+            host.preview(draft.copy());
+            if (dialog == null) return;
+            dialog.hide();
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (!completed && dialog != null) dialog.show();
+            }, 2000L);
+        }));
+        content.addView(button("Locked Option B · Reset Movement", () -> {
+            draft.motion="magnetic"; draft.duration=470; draft.easing="smooth";
+            change(); rebuild();
+        }));
+        content.addView(label("Quick appearance presets", 15, white, true));
+        content.addView(button("Crystal Clear",()->preset("crystal")));
+        content.addView(button("Emerald",()->preset("emerald")));
+        content.addView(button("Sapphire",()->preset("sapphire")));
+        content.addView(button("Sunset",()->preset("sunset")));
     }
 
     private void widgets() {
