@@ -22,6 +22,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint crystalRim = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint topGlaze = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint baseSheen = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix gradientMatrix = new Matrix();
     /** A fixed, non-animated optical rail under all 5 cards (part of approved static reference). */
     private final Paint staticRail = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -40,8 +42,14 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         this.density = density;
         // Same glass as the top-bar pills (GlassDrawable): an even veil and a shining edge.
         band.setShader(new LinearGradient(0f, 0f, 0f, 1f,
-                new int[]{0x70FFFFFF, 0xA6E7F9FA, 0x8AC6F0F2},
+                new int[]{0x42FFFFFF, 0x65CAEAF0, 0x5A83CFDD},
                 new float[]{0f, .42f, 1f}, Shader.TileMode.CLAMP));
+        topGlaze.setShader(new LinearGradient(0f, 0f, 0f, 1f,
+                new int[]{0xC7FFFFFF, 0x51FFFFFF, 0x00FFFFFF},
+                new float[]{0f, .36f, 1f}, Shader.TileMode.CLAMP));
+        baseSheen.setStyle(Paint.Style.STROKE);
+        baseSheen.setStrokeWidth(1.5f * density);
+        baseSheen.setStrokeCap(Paint.Cap.ROUND);
         crystalRim.setStyle(Paint.Style.STROKE);
         crystalRim.setStrokeWidth(1.35f * density);
         crystalRim.setShader(new LinearGradient(0f, 0f, 1f, 1f,
@@ -98,10 +106,19 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         gradientMatrix.postTranslate(0f, rect.top);
         band.getShader().setLocalMatrix(gradientMatrix);
         c.drawRoundRect(rect, radius, radius, band);
+        gradientMatrix.setScale(1f, rect.height());
+        gradientMatrix.postTranslate(0f, rect.top);
+        topGlaze.getShader().setLocalMatrix(gradientMatrix);
+        c.drawRoundRect(rect, radius, radius, topGlaze);
         gradientMatrix.setScale(rect.width(), rect.height());
         gradientMatrix.postTranslate(rect.left, rect.top);
         crystalRim.getShader().setLocalMatrix(gradientMatrix);
         c.drawRoundRect(rect, radius, radius, crystalRim);
+        baseSheen.setShader(new LinearGradient(rect.left, rect.bottom, rect.right, rect.bottom,
+                new int[]{0x00FFFFFF, 0xE7C8FCFF, 0xEAFFFFFF, 0xC7A4F8FF, 0x00FFFFFF},
+                new float[]{0f, .20f, .50f, .80f, 1f}, Shader.TileMode.CLAMP));
+        c.drawLine(rect.left + radius, rect.bottom - 2f*density,
+                rect.right - radius, rect.bottom - 2f*density, baseSheen);
 
         // Subtle icy underglow: stationary, with no tracking highlight.
         float top = rect.bottom - 1f * density;
