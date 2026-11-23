@@ -469,7 +469,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.label.setVisibility(View.VISIBLE);
             h.label.setTypeface(android.graphics.Typeface.create(
                     "sans-serif-medium", android.graphics.Typeface.BOLD));
-            h.label.setTextColor(Color.WHITE);
+            h.label.setTextColor(0xFF0A2C42);
             h.label.setSingleLine(true);
             h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
             h.label.setCompoundDrawablePadding(0);
