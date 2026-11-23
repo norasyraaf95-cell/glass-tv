@@ -1029,7 +1029,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         try {startActivityForResult(intent,code);}
         catch (ActivityNotFoundException | SecurityException ex) {
-            Toast.makeText(this,"TV file picker unavailable",Toast.LENGTH_LONG).show();
+            // Some Android TV firmware has no DocumentsUI; try the legacy picker.
+            Intent fallback=new Intent(Intent.ACTION_GET_CONTENT);
+            fallback.addCategory(Intent.CATEGORY_OPENABLE);
+            fallback.setType(code==PICK_WALLPAPER?"image/*":"*/*");
+            fallback.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try {startActivityForResult(fallback,code);}
+            catch (ActivityNotFoundException | SecurityException unavailable) {
+                Toast.makeText(this,"No TV file picker installed",Toast.LENGTH_LONG).show();
+            }
         }
     }
 
