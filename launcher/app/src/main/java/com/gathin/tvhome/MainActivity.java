@@ -310,16 +310,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         shahAlamWidgets = new ShahAlamWidgets(this);
         cloudMotion = findViewById(R.id.cloudMotion);
         customCloudToggle = findViewById(R.id.customCloudToggle);
-        android.content.SharedPreferences custom = getSharedPreferences("custom_v1", MODE_PRIVATE);
-        boolean windy = custom.getBoolean("windy_clouds", true);
-        cloudMotion.setCloudsEnabled(windy);
-        customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video unavailable" : (windy ? "WINDY · ON" : "WINDY · OFF"));
-        findViewById(R.id.customWeatherCard).setOnClickListener(v -> {
-            boolean next = !custom.getBoolean("windy_clouds", true);
-            custom.edit().putBoolean("windy_clouds", next).apply();
-            cloudMotion.setCloudsEnabled(next);
-            customCloudToggle.setText(!cloudMotion.hasVideo() ? "Video unavailable" : (next ? "WINDY · ON" : "WINDY · OFF"));
-        });
+        // Crystal Clear V2: weather remains LIVE, but it is no longer a video toggle.
+        // Always keep the static owner wallpaper visible, even if older prefs said "windy ON".
+        cloudMotion.setCloudsEnabled(false);
+        customCloudToggle.setVisibility(View.GONE);
+        View weatherCard = findViewById(R.id.customWeatherCard);
+        weatherCard.setOnClickListener(null);
+        weatherCard.setClickable(false);
         // The tiles' entrance plays once per TV boot. Android reclaims the launcher during long stays
         // in big apps; starting again then is a return to Home, not a first launch.
         long bootAt = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime();
