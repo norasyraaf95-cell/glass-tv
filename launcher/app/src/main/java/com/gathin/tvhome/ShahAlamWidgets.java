@@ -52,6 +52,7 @@ final class ShahAlamWidgets {
     private final android.graphics.drawable.GradientDrawable activePrayer;
     private static final String[] PRAYER_KEYS = {"fajr", "dhuhr", "asr", "maghrib", "isha"};
     private static final String[] PRAYER_LABELS = {"Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"};
+    private CrystalAppearance appearance = new CrystalAppearance();
     private boolean active;
     private boolean destroyed;
 
@@ -88,6 +89,18 @@ final class ShahAlamWidgets {
         for (TextView slot : prayerSlots) {
             slot.setPadding(0, 5, 0, 5);
         }
+    }
+
+    void setAppearance(CrystalAppearance theme) {
+        appearance = theme.copy();
+        activePrayer.setColor(CrystalAppearance.mix(theme.widgetAccent, 0xFFFFFFFF,
+                1f - theme.widgetHighlight / 100f));
+        int ink = theme.widgetText;
+        temp.setTextColor(ink);
+        condition.setTextColor(ink);
+        prayerName.setTextColor(ink);
+        prayerTime.setTextColor(ink);
+        paintCached();
     }
 
     void resume() {
@@ -280,7 +293,7 @@ final class ShahAlamWidgets {
         prayerTime.setText("");
         for (int i = 0; i < prayerSlots.length; i++) {
             prayerSlots[i].setText(PRAYER_LABELS[i] + "\n--:--");
-            prayerSlots[i].setTextColor(0xFF10344D);
+            prayerSlots[i].setTextColor(appearance.widgetText);
             prayerSlots[i].setBackground(null);
         }
         try {
@@ -325,7 +338,7 @@ final class ShahAlamWidgets {
             int selected = current >= 0 ? current : upcoming;
             if (selected >= 0) {
                 prayerSlots[selected].setBackground(activePrayer);
-                prayerSlots[selected].setTextColor(0xFF08283F);
+                prayerSlots[selected].setTextColor(appearance.widgetText);
             }
         } catch (Exception e) {
             prayerName.setText("Schedule unavailable");
