@@ -55,25 +55,25 @@ final class LiquidCrystalDockDrawable extends Drawable {
         this.host = host;
         density = host.getResources().getDisplayMetrics().density;
 
-        // Match the approved dark smoked-purple material, not V7.6's pale flat fill.
+        // Crystal Clear V2: optically thin white/silver tint keeps the meadow visible through glass.
         smoke.setShader(new LinearGradient(0, 0, 0, 1,
-                new int[]{0xA1F3FCFD, 0xD2D7ECEC, 0xC2CEE7E8},
+                new int[]{0x54F4FFFE, 0x89D9EFF2, 0x85A7D1D7},
                 new float[]{0f, .42f, 1f}, Shader.TileMode.CLAMP));
         topReflection.setShader(new LinearGradient(0, 0, 0, 1,
-                new int[]{0xD7FFFFFF, 0x59FFFFFF, 0x00FFFFFF},
+                new int[]{0xCBFFFFFF, 0x49FFFFFF, 0x00FFFFFF},
                 new float[]{0f, .30f, .80f}, Shader.TileMode.CLAMP));
         lens.setShader(new LinearGradient(0, 0, 0, 1,
-                new int[]{0x69FFFFFF, 0x35BCF8FE, 0x00FFFFFF},
+                new int[]{0x98FFFFFF, 0x3FA9F4FF, 0x00FFFFFF},
                 new float[]{0f, .45f, 1f}, Shader.TileMode.CLAMP));
         focusWash.setShader(new RadialGradient(.5f, .66f, .9f,
-                new int[]{0x79AEF8FF, 0x44B3ECF8, 0x00CEFAFF},
+                new int[]{0x92AEF9FF, 0x4A83E8F9, 0x00CEFAFF},
                 new float[]{0f, .53f, 1f}, Shader.TileMode.CLAMP));
         rim.setStyle(Paint.Style.STROKE);
-        rim.setStrokeWidth(1.05f * density);
+        rim.setStrokeWidth(1.35f * density);
         focusEdge.setStyle(Paint.Style.STROKE);
         focusEdge.setStrokeWidth(1.55f * density);
         bottomSheen.setStyle(Paint.Style.STROKE);
-        bottomSheen.setStrokeWidth(1.35f * density);
+        bottomSheen.setStrokeWidth(1.65f * density);
         bottomSheen.setStrokeCap(Paint.Cap.ROUND);
         setBrand(0);
 
@@ -160,7 +160,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         matrix.setScale(w, h);
         matrix.postTranslate(frame.left, frame.top);
         rim.getShader().setLocalMatrix(matrix);
-        rim.setAlpha(Math.round(208 * opacity));
+        rim.setAlpha(Math.round(246 * opacity));
         canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
                 Math.max(0f,r-.95f*density), rim);
 
@@ -170,13 +170,13 @@ final class LiquidCrystalDockDrawable extends Drawable {
         lowerCurve.cubicTo(frame.left+.40f*w, frame.bottom-.05f*h,
                 frame.left+.65f*w, frame.bottom-.12f*h, frame.right-.08f*w, frame.bottom-.17f*h);
         bottomSheen.getShader().setLocalMatrix(matrix);
-        bottomSheen.setAlpha(Math.round(125 * opacity));
+        bottomSheen.setAlpha(Math.round(170 * opacity));
         canvas.drawPath(lowerCurve, bottomSheen);
 
         if (focusFraction > .001f) {
             // Only alpha changes; the radiance is clipped to the stationary rounded tile.
             focusWash.getShader().setLocalMatrix(matrix);
-            focusWash.setAlpha(Math.round(225 * opacity * focusFraction));
+            focusWash.setAlpha(Math.round(232 * opacity * focusFraction));
             canvas.drawRoundRect(frame, r, r, focusWash);
             focusEdge.getShader().setLocalMatrix(matrix);
             focusEdge.setAlpha(Math.round(230 * opacity * focusFraction));
