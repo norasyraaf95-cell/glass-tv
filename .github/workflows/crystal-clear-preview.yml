@@ -43,7 +43,7 @@ jobs:
             echo 'Safety failure: preview must not be HOME eligible'; exit 1
           fi
           cp "$apk" GlassTV_Crystal_Control_Preview.apk
-          sha256sum GlassTV_Magnetic_B_Home.apk > GlassTV_Crystal_Control_sha256.txt
+          sha256sum GlassTV_Crystal_Control_Preview.apk > GlassTV_Crystal_Control_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
