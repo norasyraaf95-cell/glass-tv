@@ -92,6 +92,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private FrameLayout root;
     private GlassView glass;
     private View ambient;
+    /** LOCKED Option B 470ms magnetic footprint, below dock cards. */
+    private MagneticSpotlightView magneticSpotlight;
     /** The focus: one dark shape gliding between tiles and pills (see Glider). */
     private Glider glider;
     /** Whether the glider is on the top menu, so a move down travels dark. */
@@ -268,6 +270,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sourcePanelAction = cfg.sourcePanelAction;
 
         root = findViewById(R.id.root);
+        magneticSpotlight = findViewById(R.id.magneticSpotlight);
         // The fixed floor reflections are a single cached texture from the locked
         // visual reference, never recomputed or moved in response to focus.
         final android.widget.ImageView dockReflection = findViewById(R.id.dockStaticReflection);
@@ -846,6 +849,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onPause() {
         // Event-only overlay animations must never run behind a third-party app.
         if (adapter != null) adapter.suspendSatinEffects();
+        if (magneticSpotlight != null) magneticSpotlight.stop();
         super.onPause();
         unregisterReceiver(packageReceiver);
         shahAlamWidgets.pause();
@@ -908,6 +912,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Rect r = tileRect;
         r.set(0, 0, card.getWidth(), card.getHeight());
         root.offsetDescendantRectToMyCoords(card, r);
+        // VIDEO-LOCKED Option B: smooth light migrates beneath 5 stationary dock cards.
+        // On restore/home return it snaps to its known card, never sweeps from offscreen.
+        if (position < COLUMNS) magneticSpotlight.focus(r, resuming);
+        else magneticSpotlight.hide();
         float pad = 6f * density;        // matches GlassView's glow inset
         float w = card.getWidth() * AppAdapter.FOCUS_SCALE + 2 * pad;
         float h = card.getHeight() * AppAdapter.FOCUS_SCALE + 2 * pad;
