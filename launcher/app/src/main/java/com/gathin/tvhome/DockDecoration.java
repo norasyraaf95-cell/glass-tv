@@ -21,6 +21,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final int dockSize;
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint tintOverlay = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private MagneticSpotlightView spotlight;
+    private CrystalAppearance appearance = new CrystalAppearance();
     private final Paint crystalRim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint topGlaze = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint baseSheen = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -57,6 +60,17 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
                 null, Shader.TileMode.CLAMP));
         edge = new GlassRim(1.5f * density, 0xD9FFFFFF, 0x1AFFFFFF, 0.5f);
     }
+
+    void setSpotlight(MagneticSpotlightView light, RecyclerView grid) {
+        spotlight = light;
+        if (light != null) light.setDrawingHost(grid);
+    }
+
+    void setAppearance(CrystalAppearance value) {
+        appearance = value.copy();
+        tintOverlay.setColor(appearance.dockTint);
+    }
+
 
     /** The focus shape: the tray's glass would hide it, so the tray paints it over the glass itself. */
     void setGlider(Glider glider) {
@@ -101,22 +115,29 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         // Wallpaper blur is cached off the UI thread, never recalculated on DPAD focus.
         rect.inset(-10f * density, -8f * density);
         float radius = Math.min(27f * density, rect.height() * .5f);
-        blur.draw(c, parent, rect, radius, 1f);
+        float opacity = Math.max(0f,Math.min(1f,appearance.dockOpacity / 58f));
+        blur.draw(c, parent, rect, radius, opacity);
         gradientMatrix.setScale(1f, rect.height());
         gradientMatrix.postTranslate(0f, rect.top);
         band.getShader().setLocalMatrix(gradientMatrix);
+        band.setAlpha(Math.round(255f * opacity));
         c.drawRoundRect(rect, radius, radius, band);
+        tintOverlay.setAlpha(Math.round(28f * opacity));
+        c.drawRoundRect(rect, radius, radius, tintOverlay);
         gradientMatrix.setScale(1f, rect.height());
         gradientMatrix.postTranslate(0f, rect.top);
         topGlaze.getShader().setLocalMatrix(gradientMatrix);
+        topGlaze.setAlpha(Math.round(255f * opacity * appearance.dockReflection / 75f));
         c.drawRoundRect(rect, radius, radius, topGlaze);
         gradientMatrix.setScale(rect.width(), rect.height());
         gradientMatrix.postTranslate(rect.left, rect.top);
         crystalRim.getShader().setLocalMatrix(gradientMatrix);
+        crystalRim.setAlpha(Math.round(255f * appearance.dockBorder / 100f));
         c.drawRoundRect(rect, radius, radius, crystalRim);
         baseSheen.setShader(new LinearGradient(rect.left, rect.bottom, rect.right, rect.bottom,
                 new int[]{0x00FFFFFF, 0xE7C8FCFF, 0xEAFFFFFF, 0xC7A4F8FF, 0x00FFFFFF},
                 new float[]{0f, .20f, .50f, .80f, 1f}, Shader.TileMode.CLAMP));
+        baseSheen.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
         c.drawLine(rect.left + radius, rect.bottom - 2f*density,
                 rect.right - radius, rect.bottom - 2f*density, baseSheen);
 
@@ -126,7 +147,10 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         diffuseUnderRail.setShader(new LinearGradient(0f, top, 0f, bottom,
                 new int[]{0x569EF5FF, 0x1986E9FA, 0x0089E9FA},
                 new float[]{0f, .46f, 1f}, Shader.TileMode.CLAMP));
+        diffuseUnderRail.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
         c.drawRect(rect.left + 18f * density, top,
                 rect.right - 18f * density, bottom, diffuseUnderRail);
+        // True Option B layering: wallpaper -> glass tray -> light -> cards/text.
+        if (spotlight != null) spotlight.drawInTray(c, parent);
     }
 }
