@@ -445,7 +445,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.dockGlass.setBrand(position);
             h.dockGlass.syncFocus(focused);
             h.card.setBackground(h.dockGlass);
-            h.card.setForeground(null);
+            // Keep original Satin V8.5.1 travelling light on Crystal native glass.
+            h.card.setForeground(satinEnabled ? h.satinMotion : null);
             h.card.setScaleX(1f);
             h.card.setScaleY(1f);
             h.card.setTranslationY(0f);
@@ -469,7 +470,9 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.label.setVisibility(View.VISIBLE);
             h.label.setTypeface(android.graphics.Typeface.create(
                     "sans-serif-medium", android.graphics.Typeface.BOLD));
-            h.label.setTextColor(0xFF0A2C42);
+            h.label.setTextColor(Color.WHITE);
+            // White dock labels, with subtle shadow for contrast against pale alpine glass.
+            h.label.setShadowLayer(1.3f * d, 0f, 1f * d, 0x780A314A);
             h.label.setSingleLine(true);
             h.label.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0);
             h.label.setCompoundDrawablePadding(0);
@@ -562,7 +565,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             }
             // Keep the original silver key-down effect; the optional V8.4.7
             // prelaunch animation is only activated for the SmartTube dock tile.
-            if (satinEnabled && position < dockSize && DockArtwork.get(ctx).valid
+            if (satinEnabled && position < dockSize
                     && !h.satinMotion.isClickPlaying()) {
                 // Touch/accessibility clicks without a preceding DPAD_CENTER down.
                 h.satinMotion.playClick();
@@ -860,8 +863,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             if (vh instanceof Holder) {
                 Holder h = (Holder) vh;
                 int pos = h.getBindingAdapterPosition();
-                if (pos >= 0 && pos < dockSize && h.card.isFocused()
-                        && DockArtwork.get(ctx).valid) {
+                if (pos >= 0 && pos < dockSize && h.card.isFocused()) {
                     h.satinMotion.playSoftReturn();
                     break;
                 }
@@ -1013,8 +1015,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         || keyCode == KeyEvent.KEYCODE_ENTER
                         || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
                     if (event.getRepeatCount() == 0 && owner.satinEnabled
-                            && pos >= 0 && pos < owner.dockSize
-                            && DockArtwork.get(view.getContext()).valid) {
+                            && pos >= 0 && pos < owner.dockSize) {
                         satinMotion.playClick();
                         Log.i("GlassTV.V84", "Silk key-down cue on dock " + pos);
                     }
@@ -1055,8 +1056,10 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         if (focused) owner.onReferenceDockFocused(this, cardIndex);
                         else satinMotion.stop();
                     } else {
-                        satinMotion.stop();
+                        // Native Crystal Clear reuses exact V8.5.1 directional sweep and bridge.
                         dockGlass.animateFocus(focused);
+                        if (focused) owner.onReferenceDockFocused(this, cardIndex);
+                        else satinMotion.stop();
                     }
                     view.setScaleX(1f);
                     view.setScaleY(1f);
