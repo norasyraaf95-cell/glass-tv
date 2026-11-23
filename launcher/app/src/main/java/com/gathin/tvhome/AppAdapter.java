@@ -146,6 +146,8 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
     private final boolean reducedMotion;
     /** Experimental motion never modifies the five V7.8.1 source artwork bitmaps. */
     private final boolean satinEnabled;
+    /** Option B replaces V8.5.1's narrow Satin sweep, without changing app launch rules. */
+    private final boolean magneticFocusOnly;
     private int previousDockFocus = -1;
     private long previousDockAtMs;
     private View previousDockCard;
@@ -172,6 +174,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.reducedMotion = cfg.reducedMotion;
+        this.magneticFocusOnly = ctx.getPackageName().endsWith(".crystalclearmagneticb");
         View rootView = ctx instanceof Activity ? ((Activity) ctx).findViewById(R.id.root) : null;
         premiumLaunchCue = rootView instanceof ViewGroup
                 ? new PremiumLaunchCue((ViewGroup) rootView) : null;
@@ -416,7 +419,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 // EXACT user-approved pre-rendered glass and wordmarks, not shader
                 // approximations. Both bitmaps remain stationary, only alpha crossfades.
                 h.dockGlass.stopFocus();
-                h.card.setForeground(satinEnabled ? h.satinMotion : null);
+                h.card.setForeground(satinEnabled && !magneticFocusOnly ? h.satinMotion : null);
                 h.card.setBackgroundColor(Color.TRANSPARENT);
                 h.card.setScaleX(1f);
                 h.card.setScaleY(1f);
@@ -446,7 +449,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             h.dockGlass.syncFocus(focused);
             h.card.setBackground(h.dockGlass);
             // Keep original Satin V8.5.1 travelling light on Crystal native glass.
-            h.card.setForeground(satinEnabled ? h.satinMotion : null);
+            h.card.setForeground(satinEnabled && !magneticFocusOnly ? h.satinMotion : null);
             h.card.setScaleX(1f);
             h.card.setScaleY(1f);
             h.card.setTranslationY(0f);
@@ -565,7 +568,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             }
             // Keep the original silver key-down effect; the optional V8.4.7
             // prelaunch animation is only activated for the SmartTube dock tile.
-            if (satinEnabled && position < dockSize
+            if (satinEnabled && !magneticFocusOnly && position < dockSize
                     && !h.satinMotion.isClickPlaying()) {
                 // Touch/accessibility clicks without a preceding DPAD_CENTER down.
                 h.satinMotion.playClick();
@@ -819,7 +822,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Only an actual dock-to-dock focus transition gets a directional sweep. */
     private void onReferenceDockFocused(Holder h, int position) {
-        if (!satinEnabled || position < 0 || position >= dockSize) return;
+        if (!satinEnabled || magneticFocusOnly || position < 0 || position >= dockSize) return;
         long now = SystemClock.uptimeMillis();
         long interval = now - previousDockAtMs;
         // No maximum idle gap: one deliberate DPAD press after a long pause
@@ -857,7 +860,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
     /** Gentle Back return: do not replay the left/right directional reflection. */
     void playSatinReturn(RecyclerView grid) {
-        if (!satinEnabled || grid == null) return;
+        if (!satinEnabled || magneticFocusOnly || grid == null) return;
         for (int i = 0; i < grid.getChildCount(); i++) {
             RecyclerView.ViewHolder vh = grid.getChildViewHolder(grid.getChildAt(i));
             if (vh instanceof Holder) {
@@ -1014,7 +1017,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER
                         || keyCode == KeyEvent.KEYCODE_ENTER
                         || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
-                    if (event.getRepeatCount() == 0 && owner.satinEnabled
+                    if (event.getRepeatCount() == 0 && owner.satinEnabled && !owner.magneticFocusOnly
                             && pos >= 0 && pos < owner.dockSize) {
                         satinMotion.playClick();
                         Log.i("GlassTV.V84", "Silk key-down cue on dock " + pos);
