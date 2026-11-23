@@ -174,7 +174,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         this.hidden = new HashSet<>(cfg.hiddenApps);
         this.showHomeSettings = cfg.showHomeSettingsShortcut;
         this.reducedMotion = cfg.reducedMotion;
-        this.magneticFocusOnly = ctx.getPackageName().endsWith(".crystalclearmagneticb");
+        this.magneticFocusOnly = ctx.getPackageName().startsWith("com.gathin.tvhome.crystalclearmagneticb");
         View rootView = ctx instanceof Activity ? ((Activity) ctx).findViewById(R.id.root) : null;
         premiumLaunchCue = rootView instanceof ViewGroup
                 ? new PremiumLaunchCue((ViewGroup) rootView) : null;
