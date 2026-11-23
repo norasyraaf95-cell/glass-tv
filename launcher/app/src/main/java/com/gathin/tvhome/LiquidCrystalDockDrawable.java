@@ -96,9 +96,10 @@ final class LiquidCrystalDockDrawable extends Drawable {
         appearance = value.copy();
         tintPaint.setColor(appearance.dockTint);
         int tint = appearance.spotlightTint;
+        // Keep the subtle alpha envelope of the locked reference: only hue changes.
+        int rgb = tint & 0x00FFFFFF;
         focusWash.setShader(new RadialGradient(.5f,.66f,.9f,
-                new int[]{CrystalAppearance.mix(tint,0xFFFFFFFF,.30f),
-                        CrystalAppearance.mix(tint,0xFFFFFFFF,.08f), tint},
+                new int[]{(0x92 << 24) | rgb, (0x4A << 24) | rgb, rgb},
                 new float[]{0f,.53f,1f},Shader.TileMode.CLAMP));
         focusEdge.setShader(new LinearGradient(0f,0f,1f,1f,
                 new int[]{0xF8FFFFFF, tint, 0xEEFFFFFF},
@@ -210,7 +211,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         if (focusFraction > .001f) {
             // Only alpha changes; the radiance is clipped to the stationary rounded tile.
             focusWash.getShader().setLocalMatrix(matrix);
-            focusWash.setAlpha(Math.round(232 * opacity * focusFraction));
+            focusWash.setAlpha(Math.min(255,Math.round(232f * opacity * focusFraction * appearance.spotlightIntensity / 75f)));
             canvas.drawRoundRect(frame, r, r, focusWash);
             focusEdge.getShader().setLocalMatrix(matrix);
             focusEdge.setAlpha(Math.round(230f * opacity * focusFraction * appearance.spotlightIntensity / 75f));
