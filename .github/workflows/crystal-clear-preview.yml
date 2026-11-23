@@ -23,7 +23,7 @@ jobs:
         with:
           packages: platforms;android-34 build-tools;34.0.0
       - uses: gradle/actions/setup-gradle@v4
-      - name: Check Crystal Clear V2 safety and interaction contracts
+      - name: Check Crystal Control Center regression and safety contracts
         run: python3 -m unittest discover -s tests -p 'test_crystal_clear_v2_contract.py' -v
       - name: Compile and test Android
         working-directory: launcher
@@ -49,7 +49,7 @@ jobs:
         with:
           name: GlassTV-Crystal-Control-Center
           path: |
-            GlassTV_Magnetic_B_Home.apk
-            GlassTV_Magnetic_B_Home_sha256.txt
+            GlassTV_Crystal_Control_Preview.apk
+            GlassTV_Crystal_Control_sha256.txt
           retention-days: 30
           if-no-files-found: error
