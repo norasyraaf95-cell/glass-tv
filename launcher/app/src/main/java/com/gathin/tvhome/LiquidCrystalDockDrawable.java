@@ -173,7 +173,10 @@ final class LiquidCrystalDockDrawable extends Drawable {
 
         smoke.setAlpha(Math.round(255f * opacity * deckAlpha));
         canvas.drawRoundRect(frame, r, r, smoke);
-        topReflection.setAlpha(Math.round(255f * opacity * deckAlpha * Math.min(1f,appearance.dockReflection / 75f)));
+        // Reflection slider governs ALL static shine, including the upper curved lens.
+        float reflectionFactor = appearance.dockReflection / 100f;
+        float borderFactor = appearance.dockBorder / 100f;
+        topReflection.setAlpha(Math.round(175f * opacity * deckAlpha * reflectionFactor));
         canvas.drawRoundRect(frame, r, r, topReflection);
 
         // Fixed, wide glass-refraction crease: never moves during focus.
@@ -184,7 +187,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         topLens.cubicTo(frame.left+.76f*w, frame.top+.30f*h,
                 frame.left+.43f*w, frame.top+.24f*h, frame.left+.08f*w, frame.top+.31f*h);
         topLens.close();
-        lens.setAlpha(Math.round(185f * opacity * deckAlpha));
+        lens.setAlpha(Math.round(150f * opacity * deckAlpha * reflectionFactor));
         canvas.drawPath(topLens, lens);
 
         // Permanent micro-rim is part of the GLASS, not a travelling focus indicator.
@@ -193,7 +196,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         matrix.setScale(w, h);
         matrix.postTranslate(frame.left, frame.top);
         rim.getShader().setLocalMatrix(matrix);
-        rim.setAlpha(Math.round(246f * opacity * appearance.dockBorder / 84f));
+        rim.setAlpha(Math.round(195f * opacity * borderFactor));
         canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
                 Math.max(0f,r-.95f*density), rim);
 
@@ -203,7 +206,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
         lowerCurve.cubicTo(frame.left+.40f*w, frame.bottom-.05f*h,
                 frame.left+.65f*w, frame.bottom-.12f*h, frame.right-.08f*w, frame.bottom-.17f*h);
         bottomSheen.getShader().setLocalMatrix(matrix);
-        bottomSheen.setAlpha(Math.round(170f * opacity * appearance.dockReflection / 75f));
+        bottomSheen.setAlpha(Math.round(150f * opacity * reflectionFactor));
         canvas.drawPath(lowerCurve, bottomSheen);
 
         tintPaint.setAlpha(Math.round(18f * opacity * deckAlpha));
@@ -214,7 +217,8 @@ final class LiquidCrystalDockDrawable extends Drawable {
             focusWash.setAlpha(Math.min(255,Math.round(232f * opacity * focusFraction * appearance.spotlightIntensity / 75f)));
             canvas.drawRoundRect(frame, r, r, focusWash);
             focusEdge.getShader().setLocalMatrix(matrix);
-            focusEdge.setAlpha(Math.round(230f * opacity * focusFraction * appearance.spotlightIntensity / 75f));
+            // Keep glowing focus WASH; the hard white focus-edge respects Border Opacity.
+            focusEdge.setAlpha(Math.round(190f * opacity * focusFraction * borderFactor));
             canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
                     Math.max(0f,r-.95f*density), focusEdge);
         }
