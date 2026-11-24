@@ -50,8 +50,8 @@ final class CrystalControlCenter {
     private final int aqua = 0xFF6EF3FF;
     private final int textDim = 0xFFC2E4EF;
     private static final String[] SECTIONS = {
-            "Appearance", "Widgets", "Dock Glass", "Magnetic Spotlight", "Movement",
-            "Adaptive Glass", "Wallpaper", "Themes"
+            "Appearance", "Widgets", "Dock Glass", "Glass Material", "Ambient Glow",
+            "Magnetic Spotlight", "Movement", "Adaptive Glass", "Wallpaper", "Themes"
     };
     private static final int[] COLORS = {
             0xFFB7F8FF, 0xFF81B7FF, 0xFF84E3B9, 0xFFBAACFF,
@@ -165,6 +165,8 @@ final class CrystalControlCenter {
             case "Appearance": appearance(); break;
             case "Widgets": widgets(); break;
             case "Dock Glass": dock(); break;
+            case "Glass Material": glassMaterial(); break;
+            case "Ambient Glow": ambientGlow(); break;
             case "Magnetic Spotlight": spotlight(); break;
             case "Movement": movement(); break;
             case "Adaptive Glass": adaptive(); break;
@@ -210,6 +212,39 @@ final class CrystalControlCenter {
         slider("Dock Glass Opacity", draft.dockOpacity,0,100,x->draft.dockOpacity=x);
         slider("Border Opacity",draft.dockBorder,0,100,x->draft.dockBorder=x);
         slider("Reflection Intensity",draft.dockReflection,0,100,x->draft.dockReflection=x);
+    }
+    private void glassMaterial() {
+        description("Cached wallpaper glass only; no per-frame blur. 0% refraction adds no white highlight.");
+        choices("Frosted Blur", new String[]{"off","low","medium"},
+                new String[]{"Off · Clear","Low · Original","Medium · Frosted"},
+                draft.glassBlur, v->draft.glassBlur=v);
+        slider("Glass Clarity",draft.glassClarity,0,100,x->draft.glassClarity=x);
+        CheckBox grain = new CheckBox(activity);
+        grain.setText("Subtle glass grain (static)");
+        grain.setTextColor(white); grain.setTextSize(16);
+        grain.setChecked(draft.glassGrain);
+        grain.setOnCheckedChangeListener((b,checked)->{ draft.glassGrain=checked; change(); });
+        content.addView(grain);
+        slider("Refraction Strength",draft.glassRefraction,0,100,x->draft.glassRefraction=x);
+        slider("Corner Radius (dp)",draft.glassRadius,12,28,x->draft.glassRadius=x);
+    }
+    private void ambientGlow() {
+        description("Ambient glow stays behind the dock and is independent of locked Spotlight B.");
+        CheckBox enabled = new CheckBox(activity);
+        enabled.setText("Enable Ambient Glow");
+        enabled.setTextColor(white); enabled.setTextSize(16);
+        enabled.setChecked(draft.ambientEnabled);
+        enabled.setOnCheckedChangeListener((b,checked)->{draft.ambientEnabled=checked;change();});
+        content.addView(enabled);
+        colors("Ambient Glow Color",draft.ambientColor,c->draft.ambientColor=c);
+        slider("Ambient Glow Intensity",draft.ambientIntensity,0,100,x->draft.ambientIntensity=x);
+        slider("Ambient Glow Spread",draft.ambientSpread,0,100,x->draft.ambientSpread=x);
+        choices("Glow Mode",new String[]{"static","breathing"},
+                new String[]{"Static · Best Performance","Breathing · Subtle Pulse"},
+                draft.ambientMode,v->draft.ambientMode=v);
+        choices("Breathing Speed",new String[]{"0","1"},
+                new String[]{"Slow","Normal"},Integer.toString(draft.ambientBreathingSpeed),
+                v->draft.ambientBreathingSpeed=Integer.parseInt(v));
     }
     private void spotlight() {
         description("Wide diffuse light above the glass tray, behind the tile labels.");
