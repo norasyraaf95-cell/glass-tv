@@ -10,14 +10,14 @@ android {
         applicationId 'com.gathin.tvhome'
         minSdk 26
         targetSdk 34
-        versionCode 42
-        versionName '3.0.1-crystal-rim-fix-preview'
+        versionCode 43
+        versionName '3.0.1-crystal-rim-fix-home'
     }
 
     buildTypes {
         release {
             // Isolated Control Center preview. Never overwrites current HOME or other apps.
-            applicationIdSuffix '.crystalcontrolrimfix'
+            applicationIdSuffix '.crystalrimfixhome'
             // R8 strips and optimises the code (AndroidX included): smaller APK, faster start on a slow TV CPU.
             minifyEnabled true
             shrinkResources true
