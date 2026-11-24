@@ -759,6 +759,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onResume() {
         super.onResume();
+        if (crystalTray != null) crystalTray.setForeground(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(packageReceiver, packageFilter, Context.RECEIVER_NOT_EXPORTED);
         } else {
@@ -871,6 +872,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Event-only overlay animations must never run behind a third-party app.
         if (adapter != null) adapter.suspendSatinEffects();
         if (magneticSpotlight != null) magneticSpotlight.stop();
+        if (crystalTray != null) crystalTray.setForeground(false);
         super.onPause();
         unregisterReceiver(packageReceiver);
         shahAlamWidgets.pause();
@@ -906,6 +908,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         shahAlamWidgets.destroy();
         cloudMotion.onHomePause();
         wallDecoder.shutdownNow();
+        if (crystalTray != null) crystalTray.release();
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         if (tim != null) tim.unregisterCallback(inputCallback);
