@@ -1,9 +1,9 @@
-name: Glass TV Crystal Control Center Preview
+name: Glass TV Crystal Rim Fix Preview
 
 on:
   push:
     branches:
-      - crystal-control-center-development-20261124
+      - crystal-control-dock-white-rim-fix-20261124
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-preview:
-    name: Compile & validate isolated Crystal Control Center
+    name: Compile & validate Crystal Rim Fix preview
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,19 +37,19 @@ jobs:
           apk=launcher/app/build/outputs/apk/release/app-release.apk
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
-          grep -F "package: name='com.gathin.tvhome.crystalcontrolpreview' versionCode='41' versionName='3.0.0-crystal-control-preview'" /tmp/crystal-badging.txt
+          grep -F "package: name='com.gathin.tvhome.crystalcontrolrimfix' versionCode='42' versionName='3.0.1-crystal-rim-fix-preview'" /tmp/crystal-badging.txt
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump xmltree "$apk" AndroidManifest.xml > /tmp/magnetic-b-home-manifest.txt
           if grep -F 'android.intent.category.HOME' /tmp/magnetic-b-home-manifest.txt; then
             echo 'Safety failure: preview must not be HOME eligible'; exit 1
           fi
-          cp "$apk" GlassTV_Crystal_Control_Preview.apk
-          sha256sum GlassTV_Crystal_Control_Preview.apk > GlassTV_Crystal_Control_sha256.txt
+          cp "$apk" GlassTV_Crystal_Rim_Fix_Preview.apk
+          sha256sum GlassTV_Crystal_Rim_Fix_Preview.apk > GlassTV_Crystal_Rim_Fix_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
-          name: GlassTV-Crystal-Control-Center
+          name: GlassTV-Crystal-Rim-Fix
           path: |
-            GlassTV_Crystal_Control_Preview.apk
-            GlassTV_Crystal_Control_sha256.txt
+            GlassTV_Crystal_Rim_Fix_Preview.apk
+            GlassTV_Crystal_Rim_Fix_sha256.txt
           retention-days: 30
           if-no-files-found: error
