@@ -11,8 +11,8 @@ class CrystalClearV2Contracts(unittest.TestCase):
     def test_separate_preview_not_home(self):
         build = (ROOT / "launcher/app/build.gradle").read_text()
         manifest = (SRC / "AndroidManifest.xml").read_text()
-        self.assertIn("applicationIdSuffix '.crystalcontrolpreview'", build)
-        self.assertIn("versionCode 41", build)
+        self.assertIn("applicationIdSuffix '.crystalcontrolrimfix'", build)
+        self.assertIn("versionCode 42", build)
         self.assertNotIn('android.intent.category.HOME', manifest)
         self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
         self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
@@ -91,6 +91,27 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn("0xFF5D7470",light)
         self.assertNotIn("new LinearGradient(rect.left, rect.bottom",shelf)
         self.assertNotIn("new LinearGradient(0f, top, 0f, bottom",shelf)
+
+    def test_static_white_rim_and_reflections_are_genuinely_zeroable(self):
+        tile = (JAVA / "LiquidCrystalDockDrawable.java").read_text()
+        tray = (JAVA / "DockDecoration.java").read_text()
+        theme = (JAVA / "CrystalAppearance.java").read_text()
+        self.assertIn("int dockBorder = 20;", theme)
+        self.assertIn("int dockReflection = 25;", theme)
+        self.assertIn("if (appearance.dockBorder > 0)", tile)
+        self.assertIn("if (appearance.dockBorder > 0)", tray)
+        self.assertIn("float reflection = appearance.dockReflection / 100f;", tile)
+        self.assertIn("float reflection = appearance.dockReflection / 100f;", tray)
+        # Previously this top lens was unconditional, so turning reflections down
+        # did NOT remove its bright white sweep.
+        self.assertIn("if (reflection > 0f) {\n            lens.setAlpha", tile)
+        self.assertIn("if (reflection > 0f) {\n            topReflection.setAlpha", tile)
+        self.assertIn("if (reflection > 0f) {\n            bottomSheen.setAlpha", tile)
+        self.assertIn("if (reflection > 0f) {\n            baseSheen.setAlpha", tray)
+        self.assertIn("if (reflection > 0f) {\n            diffuseUnderRail.setAlpha", tray)
+        # Focus edge remains independent from the two static material sliders.
+        self.assertIn("focusEdge.setAlpha", tile)
+        self.assertIn("appearance.spotlightIntensity", tile)
 
     def test_all_native_dock_labels_white(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
