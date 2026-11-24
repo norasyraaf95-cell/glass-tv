@@ -92,6 +92,27 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertNotIn("new LinearGradient(rect.left, rect.bottom",shelf)
         self.assertNotIn("new LinearGradient(0f, top, 0f, bottom",shelf)
 
+    def test_white_border_and_lens_are_fully_controllable(self):
+        appearance = (JAVA / "CrystalAppearance.java").read_text()
+        tile = (JAVA / "LiquidCrystalDockDrawable.java").read_text()
+        tray = (JAVA / "DockDecoration.java").read_text()
+        self.assertIn("int dockBorder = 20;", appearance)
+        self.assertIn("int dockReflection = 25;", appearance)
+        # 0% reflection must eliminate the upper lens AND standard highlights.
+        self.assertIn("float reflectionFactor = appearance.dockReflection / 100f;", tile)
+        self.assertIn("lens.setAlpha(Math.round(150f * opacity * deckAlpha * reflectionFactor));", tile)
+        self.assertIn("topReflection.setAlpha(Math.round(175f * opacity * deckAlpha * reflectionFactor));", tile)
+        self.assertIn("bottomSheen.setAlpha(Math.round(150f * opacity * reflectionFactor));", tile)
+        # 0% border must remove both idle and focus-outline strokes.
+        self.assertIn("float borderFactor = appearance.dockBorder / 100f;", tile)
+        self.assertIn("rim.setAlpha(Math.round(195f * opacity * borderFactor));", tile)
+        self.assertIn("focusEdge.setAlpha(Math.round(190f * opacity * focusFraction * borderFactor));", tile)
+        self.assertIn("crystalRim.setAlpha(Math.round(185f * appearance.dockBorder / 100f));", tray)
+        self.assertIn("topGlaze.setAlpha(Math.round(170f * opacity * appearance.dockReflection / 100f));", tray)
+        # Focus glow remains independent from the static border slider.
+        self.assertIn("focusWash.setAlpha(", tile)
+        self.assertIn("spotlight.drawInTray(c, parent);", tray)
+
     def test_all_native_dock_labels_white(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
         self.assertIn("h.label.setTextColor(Color.WHITE);", adapter)
