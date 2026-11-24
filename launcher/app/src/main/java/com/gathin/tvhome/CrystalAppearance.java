@@ -24,8 +24,8 @@ final class CrystalAppearance {
     int widgetHighlight = 65;
     int dockTint = 0xFFCAFAFF;
     int dockOpacity = 58;
-    int dockBorder = 84;
-    int dockReflection = 75;
+    int dockBorder = 20;
+    int dockReflection = 25;
     int spotlightTint = 0xFF9FF7FF;
     int spotlightIntensity = 75;
     int spotlightSoftness = 65;
