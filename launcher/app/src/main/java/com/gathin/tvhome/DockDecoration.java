@@ -135,17 +135,17 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         gradientMatrix.setScale(1f, rect.height());
         gradientMatrix.postTranslate(0f, rect.top);
         topGlaze.getShader().setLocalMatrix(gradientMatrix);
-        topGlaze.setAlpha(Math.round(255f * opacity * appearance.dockReflection / 75f));
+        topGlaze.setAlpha(Math.round(170f * opacity * appearance.dockReflection / 100f));
         c.drawRoundRect(rect, radius, radius, topGlaze);
         gradientMatrix.setScale(rect.width(), rect.height());
         gradientMatrix.postTranslate(rect.left, rect.top);
         crystalRim.getShader().setLocalMatrix(gradientMatrix);
-        crystalRim.setAlpha(Math.round(255f * appearance.dockBorder / 100f));
+        crystalRim.setAlpha(Math.round(185f * appearance.dockBorder / 100f));
         c.drawRoundRect(rect, radius, radius, crystalRim);
         edgeMatrix.setScale(rect.width(),1f);
         edgeMatrix.postTranslate(rect.left,rect.bottom);
         baseSheen.getShader().setLocalMatrix(edgeMatrix);
-        baseSheen.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
+        baseSheen.setAlpha(Math.round(165f * appearance.dockReflection / 100f));
         c.drawLine(rect.left + radius, rect.bottom - 2f*density,
                 rect.right - radius, rect.bottom - 2f*density, baseSheen);
 
@@ -155,7 +155,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         underMatrix.setScale(1f,Math.max(1f,bottom-top));
         underMatrix.postTranslate(0f,top);
         diffuseUnderRail.getShader().setLocalMatrix(underMatrix);
-        diffuseUnderRail.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
+        diffuseUnderRail.setAlpha(Math.round(165f * appearance.dockReflection / 100f));
         c.drawRect(rect.left + 18f * density, top,
                 rect.right - 18f * density, bottom, diffuseUnderRail);
         // True Option B layering: wallpaper -> glass tray -> light -> cards/text.
