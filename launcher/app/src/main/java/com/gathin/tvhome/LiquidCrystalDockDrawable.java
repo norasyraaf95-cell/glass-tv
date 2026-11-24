@@ -36,6 +36,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
     private final RectF inset = new RectF();
     private final Path topLens = new Path();
     private final Path lowerCurve = new Path();
+    private final Path grainClip = new Path();
     private final Matrix matrix = new Matrix();
 
     private final Paint smoke = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -45,6 +46,7 @@ final class LiquidCrystalDockDrawable extends Drawable {
     private final Paint bottomSheen = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusWash = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint focusEdge = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint grainPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
     private final ValueAnimator focusFade = ValueAnimator.ofFloat(0f, 1f);
     private float focusFraction;
@@ -79,6 +81,8 @@ final class LiquidCrystalDockDrawable extends Drawable {
         bottomSheen.setStrokeCap(Paint.Cap.ROUND);
         setBrand(0);
 
+        grainPaint.setColor(0x0FFFFFFF);
+        grainPaint.setStrokeWidth(.5f * density);
         focusFade.setDuration(HANDOFF_MS);
         // Short, controllable easing, with no bounce or spring overshoot.
         // Match video Option B precisely: 470ms quintic smootherstep, no bounce.
@@ -159,11 +163,14 @@ final class LiquidCrystalDockDrawable extends Drawable {
         if (frame.isEmpty()) return;
 
         float w = frame.width(), h = frame.height();
-        float r = Math.min(h * .5f, 19f * density);
+        float r = Math.min(h * .5f, appearance.glassRadius * density);
 
         // Wallpaper-aligned cached blurred glass is precomputed outside the draw loop.
         float deckAlpha = Math.max(0f,Math.min(1f,appearance.dockOpacity / 58f));
-        wallpaperGlass.draw(canvas, host, frame, r, opacity * deckAlpha);
+        if (!"off".equals(appearance.glassBlur)) {
+            // Uses the existing precomputed blurred wallpaper, never re-blurred in draw().
+            wallpaperGlass.draw(canvas, host, frame, r, opacity * deckAlpha);
+        }
 
         matrix.setScale(1f, h);
         matrix.postTranslate(0f, frame.top);
@@ -171,7 +178,11 @@ final class LiquidCrystalDockDrawable extends Drawable {
         topReflection.getShader().setLocalMatrix(matrix);
         lens.getShader().setLocalMatrix(matrix);
 
-        smoke.setAlpha(Math.round(255f * opacity * deckAlpha));
+        // Clarity controls how much original wallpaper remains legible behind the veil.
+        // The medium setting slightly boosts the frosted veil, with no extra bitmap.
+        float veil = (1f - appearance.glassClarity / 100f) * .44f + .84f;
+        if ("medium".equals(appearance.glassBlur)) veil = Math.min(1f,veil + .10f);
+        smoke.setAlpha(Math.round(255f * opacity * deckAlpha * veil));
         canvas.drawRoundRect(frame, r, r, smoke);
         // Single reflection control governs EVERY non-focus light surface on each tile.
         // Zero means the top reflection is genuinely absent.
@@ -192,7 +203,8 @@ final class LiquidCrystalDockDrawable extends Drawable {
         // BUG FIX: this curved top-lens reflection previously ignored Reflection Intensity.
         // At 0% it MUST NOT draw, even when glass opacity is > 0%.
         if (reflection > 0f) {
-            lens.setAlpha(Math.round(185f * opacity * deckAlpha * reflection));
+            lens.setAlpha(Math.round(185f * opacity * deckAlpha * reflection
+                    * appearance.glassRefraction / 100f));
             canvas.drawPath(topLens, lens);
         }
 
@@ -222,6 +234,20 @@ final class LiquidCrystalDockDrawable extends Drawable {
 
         tintPaint.setAlpha(Math.round(18f * opacity * deckAlpha));
         canvas.drawRoundRect(frame,r,r,tintPaint);
+        if (appearance.glassGrain) {
+            // Lightweight stationary grain hatch; no random(), textures or allocations in onDraw.
+            int checkpoint = canvas.save();
+            grainClip.reset();
+            grainClip.addRoundRect(frame,r,r,Path.Direction.CW);
+            canvas.clipPath(grainClip);
+            grainPaint.setAlpha(Math.round(11f * opacity * deckAlpha));
+            float gap = 13f * density;
+            for (float x = frame.left + gap; x < frame.right; x += gap) {
+                canvas.drawLine(x, frame.top + 4f*density,
+                        x, frame.bottom - 4f*density, grainPaint);
+            }
+            canvas.restoreToCount(checkpoint);
+        }
         if (focusFraction > .001f) {
             // Only alpha changes; the radiance is clipped to the stationary rounded tile.
             focusWash.getShader().setLocalMatrix(matrix);
