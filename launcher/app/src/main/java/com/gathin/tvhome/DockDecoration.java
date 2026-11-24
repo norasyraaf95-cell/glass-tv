@@ -135,19 +135,27 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         gradientMatrix.setScale(1f, rect.height());
         gradientMatrix.postTranslate(0f, rect.top);
         topGlaze.getShader().setLocalMatrix(gradientMatrix);
-        topGlaze.setAlpha(Math.round(255f * opacity * appearance.dockReflection / 75f));
-        c.drawRoundRect(rect, radius, radius, topGlaze);
+        // Respect Reflection Intensity for all stationary white tray highlights.
+        float reflection = appearance.dockReflection / 100f;
+        if (reflection > 0f) {
+            topGlaze.setAlpha(Math.round(255f * opacity * reflection));
+            c.drawRoundRect(rect, radius, radius, topGlaze);
+        }
         gradientMatrix.setScale(rect.width(), rect.height());
         gradientMatrix.postTranslate(rect.left, rect.top);
         crystalRim.getShader().setLocalMatrix(gradientMatrix);
-        crystalRim.setAlpha(Math.round(255f * appearance.dockBorder / 100f));
-        c.drawRoundRect(rect, radius, radius, crystalRim);
+        if (appearance.dockBorder > 0) {
+            crystalRim.setAlpha(Math.round(255f * appearance.dockBorder / 100f));
+            c.drawRoundRect(rect, radius, radius, crystalRim);
+        }
         edgeMatrix.setScale(rect.width(),1f);
         edgeMatrix.postTranslate(rect.left,rect.bottom);
         baseSheen.getShader().setLocalMatrix(edgeMatrix);
-        baseSheen.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
-        c.drawLine(rect.left + radius, rect.bottom - 2f*density,
-                rect.right - radius, rect.bottom - 2f*density, baseSheen);
+        if (reflection > 0f) {
+            baseSheen.setAlpha(Math.round(255f * reflection));
+            c.drawLine(rect.left + radius, rect.bottom - 2f*density,
+                    rect.right - radius, rect.bottom - 2f*density, baseSheen);
+        }
 
         // Subtle icy underglow: stationary, with no tracking highlight.
         float top = rect.bottom - 1f * density;
@@ -155,9 +163,11 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         underMatrix.setScale(1f,Math.max(1f,bottom-top));
         underMatrix.postTranslate(0f,top);
         diffuseUnderRail.getShader().setLocalMatrix(underMatrix);
-        diffuseUnderRail.setAlpha(Math.round(255f * appearance.dockReflection / 100f));
-        c.drawRect(rect.left + 18f * density, top,
-                rect.right - 18f * density, bottom, diffuseUnderRail);
+        if (reflection > 0f) {
+            diffuseUnderRail.setAlpha(Math.round(255f * reflection));
+            c.drawRect(rect.left + 18f * density, top,
+                    rect.right - 18f * density, bottom, diffuseUnderRail);
+        }
         // True Option B layering: wallpaper -> glass tray -> light -> cards/text.
         if (spotlight != null) spotlight.drawInTray(c, parent);
     }
