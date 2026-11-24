@@ -51,11 +51,17 @@
             android:clearTaskOnLaunch="true"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|uiMode"
             android:screenOrientation="landscape">
-            <!-- Control Center is a manual testing preview, NOT a HOME candidate. -->
-            <!-- Listed in the TV's own app list, so it can be opened from the stock home screen too. -->
+            <!-- Independently installable HOME Edition. Keep LEANBACK so it can
+                 still be launched manually from the TV app list for recovery. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <!-- HOME only in this separate release, never in the Rim Fix preview. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
