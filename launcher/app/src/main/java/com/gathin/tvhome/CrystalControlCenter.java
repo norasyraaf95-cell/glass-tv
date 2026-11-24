@@ -45,6 +45,9 @@ final class CrystalControlCenter {
     private LinearLayout content, navigation;
     private String selected = "Appearance";
     private boolean completed;
+    /** Restores DPAD focus to the chosen swatch after rebuilding the tab. */
+    private String pendingSwatchGroup;
+    private int pendingSwatchIndex = -1;
     private final float dp;
     private final int white = Color.WHITE;
     private final int aqua = 0xFF6EF3FF;
@@ -75,7 +78,7 @@ final class CrystalControlCenter {
         outer.setPadding(px(16),px(14),px(16),px(12));
         outer.setBackground(panel(0xEB123C57, 27, 0xA1B9F7FF));
         LinearLayout heading = row();
-        TextView title = label("◇  Crystal Control Center", 24, white, true);
+        TextView title = label("◇  ASYNAN CONTROL CENTER", 24, white, true);
         heading.addView(title, new LinearLayout.LayoutParams(0, px(48), 1));
         Button close = button("✕", () -> dismiss(false));
         heading.addView(close, new LinearLayout.LayoutParams(px(55), px(45)));
@@ -317,17 +320,55 @@ final class CrystalControlCenter {
         content.addView(label(name,14,white,true));
         LinearLayout r = row();
         r.setGravity(Gravity.CENTER_VERTICAL);
-        for (int color : COLORS) {
-            Button swatch=new Button(activity);
-            swatch.setContentDescription(name+" "+String.format("#%06X",color & 0xFFFFFF));
-            swatch.setText(value==color?"✓":" ");
-            swatch.setTextColor(color == Color.WHITE ? Color.BLACK:Color.WHITE);
-            swatch.setTextSize(10f);
-            swatch.setBackground(panel(color,16,value==color?Color.WHITE:0x44FFFFFF));
-            swatch.setOnClickListener(v->{setter.set(color);change();rebuild();});
-            r.addView(swatch,new LinearLayout.LayoutParams(0,px(39),1));
+        for (int index=0; index<COLORS.length; index++) {
+            final int chosenIndex = index;
+            final int color = COLORS[index];
+            final boolean selectedColor = value == color;
+            Button swatch = new Button(activity);
+            swatch.setAllCaps(false);
+            swatch.setFocusable(true);
+            swatch.setText(selectedColor ? "✓" : "");
+            swatch.setTextColor(Color.luminance(color) > .58f ? 0xFF113447 : Color.WHITE);
+            swatch.setTextSize(18f);
+            swatch.setContentDescription(name + ", color " + (index+1) + " of " + COLORS.length
+                    + ", " + String.format(java.util.Locale.US,"#%06X",color & 0xFFFFFF)
+                    + (selectedColor ? ", selected" : ""));
+            // Different visual states: selected = cyan ring + check,
+            // currently remote-focused = thick contrasting outline + slight scale.
+            styleSwatch(swatch,color,selectedColor,false);
+            swatch.setOnFocusChangeListener((v,hasFocus) -> {
+                styleSwatch(swatch,color,selectedColor,hasFocus);
+                swatch.setScaleX(hasFocus ? 1.065f : 1f);
+                swatch.setScaleY(hasFocus ? 1.08f : 1f);
+            });
+            swatch.setOnClickListener(v -> {
+                pendingSwatchGroup=name;
+                pendingSwatchIndex=chosenIndex;
+                setter.set(color);
+                change();
+                rebuild();
+            });
+            r.addView(swatch,new LinearLayout.LayoutParams(0,px(42),1));
+            // Rebuild removes the old button, so explicitly request focus on its replacement.
+            if (name.equals(pendingSwatchGroup) && index==pendingSwatchIndex) {
+                pendingSwatchGroup=null;
+                pendingSwatchIndex=-1;
+                swatch.post(() -> {
+                    if (swatch.isAttachedToWindow()) swatch.requestFocus();
+                });
+            }
         }
         content.addView(r);
+    }
+
+    private void styleSwatch(Button swatch,int color,boolean selected,boolean focused) {
+        // Bright colors (especially white) need a dark navy focus outline for contrast.
+        int focusStroke = Color.luminance(color) > .58f ? 0xFF103A53 : Color.WHITE;
+        int border = focused ? focusStroke : (selected ? 0xFF55F1FF : 0x667BC8D7);
+        int width = focused ? 4 : (selected ? 3 : 1);
+        GradientDrawable drawable = panel(color,16,border);
+        drawable.setStroke(px(width), border);
+        swatch.setBackground(drawable);
     }
 
     private interface ValueSet { void set(int x); }
