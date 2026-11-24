@@ -1,9 +1,9 @@
-name: Glass TV Crystal Control V2 Glass Ambient Preview
+name: Glass TV Crystal Control V2 HOME Edition
 
 on:
   push:
     branches:
-      - crystal-control-v2-glass-ambient-preview-20261124
+      - crystal-control-v2-home-edition-20261124
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build-preview:
-    name: Compile & validate Crystal Control V2 isolated Preview
+    name: Compile & validate Crystal Control V2 HOME Edition
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,19 +37,18 @@ jobs:
           apk=launcher/app/build/outputs/apk/release/app-release.apk
           test -s "$apk"
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk" > /tmp/crystal-badging.txt
-          grep -F "package: name='com.gathin.tvhome.crystalcontrolv2preview' versionCode='44' versionName='3.1.0-crystal-control-v2-preview'" /tmp/crystal-badging.txt
+          grep -F "package: name='com.gathin.tvhome.crystalcontrolv2home' versionCode='45' versionName='3.1.0-crystal-control-v2-home'" /tmp/crystal-badging.txt
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump xmltree "$apk" AndroidManifest.xml > /tmp/magnetic-b-home-manifest.txt
-          if grep -F 'android.intent.category.HOME' /tmp/magnetic-b-home-manifest.txt; then
-            echo 'Safety failure: V2 preview must not be HOME eligible'; exit 1
-          fi
-          cp "$apk" GlassTV_Crystal_Control_V2_Preview.apk
-          sha256sum GlassTV_Crystal_Control_V2_Preview.apk > GlassTV_Crystal_Control_V2_sha256.txt
+          grep -F 'android.intent.category.HOME' /tmp/magnetic-b-home-manifest.txt
+          grep -F 'android.intent.category.DEFAULT' /tmp/magnetic-b-home-manifest.txt
+          cp "$apk" GlassTV_Crystal_Control_V2_HOME.apk
+          sha256sum GlassTV_Crystal_Control_V2_HOME.apk > GlassTV_Crystal_Control_V2_HOME_sha256.txt
       - name: Upload separate APK for manual TV testing
         uses: actions/upload-artifact@v4
         with:
-          name: GlassTV-Crystal-Control-V2
+          name: GlassTV-Crystal-Control-V2-HOME
           path: |
-            GlassTV_Crystal_Control_V2_Preview.apk
-            GlassTV_Crystal_Control_V2_sha256.txt
+            GlassTV_Crystal_Control_V2_HOME.apk
+            GlassTV_Crystal_Control_V2_HOME_sha256.txt
           retention-days: 30
           if-no-files-found: error
