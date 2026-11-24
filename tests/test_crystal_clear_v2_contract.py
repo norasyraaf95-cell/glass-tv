@@ -114,6 +114,41 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn("focusEdge.setAlpha", tile)
         self.assertIn("appearance.spotlightIntensity", tile)
 
+    def test_v2_glass_and_ambient_settings_roundtrip(self):
+        state=(JAVA/"CrystalAppearance.java").read_text()
+        control=(JAVA/"CrystalControlCenter.java").read_text()
+        for key in ("glassBlur","glassClarity","glassGrain","glassRefraction",
+                    "glassRadius","ambientEnabled","ambientColor","ambientIntensity",
+                    "ambientSpread","ambientMode","ambientBreathingSpeed"):
+            self.assertIn('j.put("'+key+'"',state)
+            self.assertIn('s.'+key+' =',state)
+        self.assertIn('"Glass Material"',control)
+        self.assertIn('"Ambient Glow"',control)
+        self.assertIn('slider("Glass Clarity"',control)
+        self.assertIn('slider("Ambient Glow Intensity"',control)
+        self.assertIn('host.cancel();',control)
+
+    def test_v2_no_frame_allocations_or_home_override(self):
+        material=(JAVA/"LiquidCrystalDockDrawable.java").read_text()
+        tray=(JAVA/"DockDecoration.java").read_text()
+        main=(JAVA/"MainActivity.java").read_text()
+        manifest=(SRC/"AndroidManifest.xml").read_text()
+        self.assertNotIn('android.intent.category.HOME',manifest)
+        self.assertIn('if (!"off".equals(appearance.glassBlur))',material)
+        self.assertIn('appearance.glassClarity',material)
+        self.assertIn('appearance.glassRefraction / 100f',material)
+        self.assertIn('appearance.glassRadius * density',material)
+        self.assertIn('if (appearance.dockBorder > 0)',material)
+        self.assertIn('if (reflection > 0f)',material)
+        self.assertIn('ambientPulse.setRepeatCount(ValueAnimator.INFINITE)',tray)
+        self.assertIn('if (appearance.ambientEnabled && appearance.ambientIntensity > 0)',tray)
+        self.assertIn('ambientGlowPaint.getShader().setLocalMatrix(ambientMatrix)',tray)
+        self.assertIn('if (spotlight != null) spotlight.drawInTray(c, parent);',tray)
+        self.assertLess(tray.index('c.drawRoundRect(rect, radius, radius, ambientGlowPaint)'),
+                        tray.index('spotlight.drawInTray(c, parent)'))
+        self.assertIn('crystalTray.setForeground(false)',main)
+        self.assertIn('crystalTray.release()',main)
+
     def test_all_native_dock_labels_white(self):
         adapter = (JAVA / "AppAdapter.java").read_text()
         self.assertIn("h.label.setTextColor(Color.WHITE);", adapter)
