@@ -26,6 +26,19 @@ final class CrystalAppearance {
     int dockOpacity = 58;
     int dockBorder = 20;
     int dockReflection = 25;
+    // V2 glass: default is the current Rim Fix material, no extra processing.
+    String glassBlur = "low"; // off / low / medium (cached wallpaper glass)
+    int glassClarity = 80;
+    boolean glassGrain = false;
+    int glassRefraction = 15;
+    int glassRadius = 19; // dp, 12..28
+    // V2 ambient: disabled by default so the existing magnetic behavior remains identical.
+    boolean ambientEnabled = false;
+    int ambientColor = 0xFF93EFFF;
+    int ambientIntensity = 25;
+    int ambientSpread = 60;
+    String ambientMode = "static"; // static / breathing
+    int ambientBreathingSpeed = 0; // 0 slow / 1 normal
     int spotlightTint = 0xFF9FF7FF;
     int spotlightIntensity = 75;
     int spotlightSoftness = 65;
@@ -46,6 +59,12 @@ final class CrystalAppearance {
         s.widgetOpacity = widgetOpacity; s.widgetHighlight = widgetHighlight;
         s.dockTint = dockTint; s.dockOpacity = dockOpacity; s.dockBorder = dockBorder;
         s.dockReflection = dockReflection; s.spotlightTint = spotlightTint;
+        s.glassBlur = glassBlur; s.glassClarity = glassClarity;
+        s.glassGrain = glassGrain; s.glassRefraction = glassRefraction;
+        s.glassRadius = glassRadius;
+        s.ambientEnabled = ambientEnabled; s.ambientColor = ambientColor;
+        s.ambientIntensity = ambientIntensity; s.ambientSpread = ambientSpread;
+        s.ambientMode = ambientMode; s.ambientBreathingSpeed = ambientBreathingSpeed;
         s.spotlightIntensity = spotlightIntensity; s.spotlightSoftness = spotlightSoftness;
         s.motion = motion; s.duration = duration; s.easing = easing;
         s.adaptive = adaptive; s.adaptSensitivity = adaptSensitivity; s.adaptStyle = adaptStyle;
@@ -72,6 +91,17 @@ final class CrystalAppearance {
         s.dockOpacity = percent(j, "dockOpacity", s.dockOpacity);
         s.dockBorder = percent(j, "dockBorder", s.dockBorder);
         s.dockReflection = percent(j, "dockReflection", s.dockReflection);
+        s.glassBlur = choice(j.optString("glassBlur", "low"), "low", "off", "medium");
+        s.glassClarity = percent(j, "glassClarity", s.glassClarity);
+        s.glassGrain = j.optBoolean("glassGrain", false);
+        s.glassRefraction = percent(j, "glassRefraction", s.glassRefraction);
+        s.glassRadius = Math.max(12, Math.min(28, j.optInt("glassRadius", 19)));
+        s.ambientEnabled = j.optBoolean("ambientEnabled", false);
+        s.ambientColor = color(j, "ambientColor", s.ambientColor);
+        s.ambientIntensity = percent(j, "ambientIntensity", s.ambientIntensity);
+        s.ambientSpread = percent(j, "ambientSpread", s.ambientSpread);
+        s.ambientMode = choice(j.optString("ambientMode", "static"), "static", "breathing");
+        s.ambientBreathingSpeed = Math.max(0, Math.min(1, j.optInt("ambientBreathingSpeed", 0)));
         s.spotlightTint = color(j, "spotlightTint", s.spotlightTint);
         s.spotlightIntensity = percent(j, "spotlightIntensity", s.spotlightIntensity);
         s.spotlightSoftness = percent(j, "spotlightSoftness", s.spotlightSoftness);
@@ -110,6 +140,12 @@ final class CrystalAppearance {
             j.put("widgetHighlight", widgetHighlight);
             j.put("dockTint", hex(dockTint)); j.put("dockOpacity", dockOpacity);
             j.put("dockBorder", dockBorder); j.put("dockReflection", dockReflection);
+            j.put("glassBlur", glassBlur); j.put("glassClarity", glassClarity);
+            j.put("glassGrain", glassGrain); j.put("glassRefraction", glassRefraction);
+            j.put("glassRadius", glassRadius);
+            j.put("ambientEnabled", ambientEnabled); j.put("ambientColor", hex(ambientColor));
+            j.put("ambientIntensity", ambientIntensity); j.put("ambientSpread", ambientSpread);
+            j.put("ambientMode", ambientMode); j.put("ambientBreathingSpeed", ambientBreathingSpeed);
             j.put("spotlightTint", hex(spotlightTint));
             j.put("spotlightIntensity", spotlightIntensity);
             j.put("spotlightSoftness", spotlightSoftness);
