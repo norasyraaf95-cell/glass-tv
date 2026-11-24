@@ -173,8 +173,13 @@ final class LiquidCrystalDockDrawable extends Drawable {
 
         smoke.setAlpha(Math.round(255f * opacity * deckAlpha));
         canvas.drawRoundRect(frame, r, r, smoke);
-        topReflection.setAlpha(Math.round(255f * opacity * deckAlpha * Math.min(1f,appearance.dockReflection / 75f)));
-        canvas.drawRoundRect(frame, r, r, topReflection);
+        // Single reflection control governs EVERY non-focus light surface on each tile.
+        // Zero means the top reflection is genuinely absent.
+        float reflection = appearance.dockReflection / 100f;
+        if (reflection > 0f) {
+            topReflection.setAlpha(Math.round(255f * opacity * deckAlpha * reflection));
+            canvas.drawRoundRect(frame, r, r, topReflection);
+        }
 
         // Fixed, wide glass-refraction crease: never moves during focus.
         topLens.reset();
@@ -184,8 +189,12 @@ final class LiquidCrystalDockDrawable extends Drawable {
         topLens.cubicTo(frame.left+.76f*w, frame.top+.30f*h,
                 frame.left+.43f*w, frame.top+.24f*h, frame.left+.08f*w, frame.top+.31f*h);
         topLens.close();
-        lens.setAlpha(Math.round(185f * opacity * deckAlpha));
-        canvas.drawPath(topLens, lens);
+        // BUG FIX: this curved top-lens reflection previously ignored Reflection Intensity.
+        // At 0% it MUST NOT draw, even when glass opacity is > 0%.
+        if (reflection > 0f) {
+            lens.setAlpha(Math.round(185f * opacity * deckAlpha * reflection));
+            canvas.drawPath(topLens, lens);
+        }
 
         // Permanent micro-rim is part of the GLASS, not a travelling focus indicator.
         inset.set(frame);
@@ -193,9 +202,12 @@ final class LiquidCrystalDockDrawable extends Drawable {
         matrix.setScale(w, h);
         matrix.postTranslate(frame.left, frame.top);
         rim.getShader().setLocalMatrix(matrix);
-        rim.setAlpha(Math.round(246f * opacity * appearance.dockBorder / 84f));
-        canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
-                Math.max(0f,r-.95f*density), rim);
+        // Border Opacity controls all STATIC tile outlines; focused glow is separate.
+        if (appearance.dockBorder > 0) {
+            rim.setAlpha(Math.round(246f * opacity * appearance.dockBorder / 100f));
+            canvas.drawRoundRect(inset, Math.max(0f,r-.95f*density),
+                    Math.max(0f,r-.95f*density), rim);
+        }
 
         // Refraction along the lower third of the stationary glass tile.
         lowerCurve.reset();
@@ -203,8 +215,10 @@ final class LiquidCrystalDockDrawable extends Drawable {
         lowerCurve.cubicTo(frame.left+.40f*w, frame.bottom-.05f*h,
                 frame.left+.65f*w, frame.bottom-.12f*h, frame.right-.08f*w, frame.bottom-.17f*h);
         bottomSheen.getShader().setLocalMatrix(matrix);
-        bottomSheen.setAlpha(Math.round(170f * opacity * appearance.dockReflection / 75f));
-        canvas.drawPath(lowerCurve, bottomSheen);
+        if (reflection > 0f) {
+            bottomSheen.setAlpha(Math.round(170f * opacity * reflection));
+            canvas.drawPath(lowerCurve, bottomSheen);
+        }
 
         tintPaint.setAlpha(Math.round(18f * opacity * deckAlpha));
         canvas.drawRoundRect(frame,r,r,tintPaint);
