@@ -114,6 +114,18 @@ class CrystalClearV2Contracts(unittest.TestCase):
         self.assertIn("focusEdge.setAlpha", tile)
         self.assertIn("appearance.spotlightIntensity", tile)
 
+    def test_asynan_color_swatch_remote_focus_and_home(self):
+        control=(JAVA/"CrystalControlCenter.java").read_text()
+        manifest=(SRC/"AndroidManifest.xml").read_text()
+        self.assertIn("ASYNAN CONTROL CENTER",control)
+        self.assertIn("swatch.setFocusable(true)",control)
+        self.assertIn("swatch.setOnFocusChangeListener",control)
+        self.assertIn("styleSwatch(swatch,color,selectedColor,hasFocus)",control)
+        self.assertIn("pendingSwatchGroup=name;",control)
+        self.assertIn("swatch.requestFocus()",control)
+        self.assertIn('category android:name="android.intent.category.HOME"',manifest)
+        self.assertIn('category android:name="android.intent.category.DEFAULT"',manifest)
+
     def test_v2_glass_and_ambient_settings_roundtrip(self):
         state=(JAVA/"CrystalAppearance.java").read_text()
         control=(JAVA/"CrystalControlCenter.java").read_text()
@@ -133,7 +145,8 @@ class CrystalClearV2Contracts(unittest.TestCase):
         tray=(JAVA/"DockDecoration.java").read_text()
         main=(JAVA/"MainActivity.java").read_text()
         manifest=(SRC/"AndroidManifest.xml").read_text()
-        self.assertNotIn('android.intent.category.HOME',manifest)
+        self.assertIn('android.intent.category.HOME',manifest)
+        self.assertIn('android.intent.category.DEFAULT',manifest)
         self.assertIn('if (!"off".equals(appearance.glassBlur))',material)
         self.assertIn('appearance.glassClarity',material)
         self.assertIn('appearance.glassRefraction / 100f',material)
