@@ -1,6 +1,9 @@
 package com.gathin.tvhome;
 
+import android.animation.ValueAnimator;
 import android.graphics.Canvas;
+import android.graphics.RadialGradient;
+import android.view.animation.LinearInterpolator;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Shader;
@@ -22,6 +25,12 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tintOverlay = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ambientGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix ambientMatrix = new Matrix();
+    private final ValueAnimator ambientPulse = ValueAnimator.ofFloat(.70f,1f);
+    private float ambientPulseAlpha = 1f;
+    private RecyclerView ambientHost;
+    private boolean foreground = true;
     private MagneticSpotlightView spotlight;
     private CrystalAppearance appearance = new CrystalAppearance();
     private final Paint crystalRim = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -67,16 +76,56 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
                 new int[]{0xF5FFFFFF, 0xAEC8FAFF, 0x79A4EBF8, 0xEDFFFFFF},
                 null, Shader.TileMode.CLAMP));
         edge = new GlassRim(1.5f * density, 0xD9FFFFFF, 0x1AFFFFFF, 0.5f);
+        ambientPulse.setRepeatCount(ValueAnimator.INFINITE);
+        ambientPulse.setRepeatMode(ValueAnimator.REVERSE);
+        ambientPulse.setInterpolator(new LinearInterpolator());
+        ambientPulse.addUpdateListener(animation -> {
+            ambientPulseAlpha = (float) animation.getAnimatedValue();
+            if (ambientHost != null) ambientHost.invalidate();
+        });
     }
 
     void setSpotlight(MagneticSpotlightView light, RecyclerView grid) {
         spotlight = light;
+        ambientHost = grid;
         if (light != null) light.setDrawingHost(grid);
+    }
+
+    void setForeground(boolean active) {
+        foreground = active;
+        updateAmbientPulse();
+    }
+
+    void release() {
+        ambientPulse.cancel();
+        ambientHost = null;
+    }
+
+    private void updateAmbientPulse() {
+        boolean breathe = foreground && appearance.ambientEnabled
+                && appearance.ambientIntensity > 0 && "breathing".equals(appearance.ambientMode);
+        if (breathe) {
+            long duration = appearance.ambientBreathingSpeed == 0 ? 3400L : 2200L;
+            if (!ambientPulse.isRunning() || ambientPulse.getDuration() != duration) {
+                ambientPulse.cancel();
+                ambientPulse.setDuration(duration);
+                ambientPulse.start();
+            }
+        } else {
+            ambientPulse.cancel();
+            ambientPulseAlpha = 1f;
+            if (ambientHost != null) ambientHost.invalidate();
+        }
     }
 
     void setAppearance(CrystalAppearance value) {
         appearance = value.copy();
         tintOverlay.setColor(appearance.dockTint);
+        int color = appearance.ambientColor & 0x00FFFFFF;
+        ambientGlowPaint.setShader(new RadialGradient(.5f,.61f,.78f,
+                new int[]{(0x9A<<24)|color,(0x3B<<24)|color,color},
+                new float[]{0f,.48f,1f}, Shader.TileMode.CLAMP));
+        updateAmbientPulse();
     }
 
 
@@ -168,7 +217,19 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             c.drawRect(rect.left + 18f * density, top,
                     rect.right - 18f * density, bottom, diffuseUnderRail);
         }
-        // True Option B layering: wallpaper -> glass tray -> light -> cards/text.
+        // Ambient sits on top of tray and UNDER all independent app cards,
+        // separate from Magnetic Spotlight B. Shader is created only on settings change.
+        if (appearance.ambientEnabled && appearance.ambientIntensity > 0) {
+            float spread = .75f + appearance.ambientSpread / 100f * .85f;
+            ambientMatrix.setScale(rect.width() * spread, rect.height() * spread);
+            ambientMatrix.postTranslate(rect.centerX() - rect.width() * spread * .5f,
+                    rect.centerY() - rect.height() * spread * .5f);
+            ambientGlowPaint.getShader().setLocalMatrix(ambientMatrix);
+            ambientGlowPaint.setAlpha(Math.round(200f * appearance.ambientIntensity / 100f
+                    * ambientPulseAlpha));
+            c.drawRoundRect(rect, radius, radius, ambientGlowPaint);
+        }
+        // True Option B layering: wallpaper -> glass tray -> ambient -> moving light -> cards.
         if (spotlight != null) spotlight.drawInTray(c, parent);
     }
 }
