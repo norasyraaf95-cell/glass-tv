@@ -11,9 +11,9 @@ class CrystalClearV2Contracts(unittest.TestCase):
     def test_separate_preview_not_home(self):
         build = (ROOT / "launcher/app/build.gradle").read_text()
         manifest = (SRC / "AndroidManifest.xml").read_text()
-        self.assertIn("applicationIdSuffix '.crystalcontrolv2preview'", build)
-        self.assertIn("versionCode 44", build)
-        self.assertNotIn('android.intent.category.HOME', manifest)
+        self.assertIn("applicationIdSuffix '.asynancontrolhome'", build)
+        self.assertIn("versionCode 45", build)
+        self.assertIn('android.intent.category.HOME', manifest)
         self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
         self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
         self.assertIn('android.intent.category.LEANBACK_LAUNCHER', manifest)
