@@ -36,7 +36,7 @@ jobs:
         working-directory: launcher
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon --console=plain assembleRelease
+          ./gradlew --no-daemon --console=plain testReleaseUnitTest assembleRelease
 
       - name: Verify APK and embedded preset
         run: |
@@ -58,7 +58,7 @@ jobs:
           assert config["columns"] == 5 and config["rows_below_dock"] == 0
           assert config["places"] is False and config["wallpaper"] is False
           assert config["cache_clean_days"] == 7 and config["reduced_motion"] is True
-          print("Five-app preset verified.")
+          print("Five-app preset verified; weekly cache cleaning retained.")
           PY
 
       - name: Upload installable APK

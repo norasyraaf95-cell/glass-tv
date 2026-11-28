@@ -221,6 +221,14 @@
             </LinearLayout>
         </RelativeLayout>
 
+        <!-- Five daily prayers, compact and non-focusable, below the original clock and controls. -->
+        <com.gathin.tvhome.PrayerBar
+            android:id="@+id/prayerBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:focusable="false" />
+
         <!-- The wrapper clips at the grid's edge; the grid itself must not clip so scaled tiles can overflow their cells. -->
         <com.gathin.tvhome.FadeTopFrame
             android:id="@+id/gridWrap"
