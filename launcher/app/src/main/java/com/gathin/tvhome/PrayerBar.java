@@ -38,7 +38,7 @@ public final class PrayerBar extends LinearLayout {
     private static final String[] NAMES = {"Subuh", "Zohor", "Asar", "Maghrib", "Isyak"};
     private static final String[] KEYS = {"fajr", "dhuhr", "asr", "maghrib", "isha"};
     private static final int GOLD = 0xFFE4C883;
-    private static final int MUTED = 0xFFAAAAAA;
+    private static final int MUTED = 0xFFDDDDDD;
     private static final int WHITE = 0xFFEEEEEE;
     private static final long RETRY_MS = 30 * 60 * 1000L;
     private static final int LIMIT = 128 * 1024;
@@ -66,10 +66,11 @@ public final class PrayerBar extends LinearLayout {
         setGravity(Gravity.CENTER_VERTICAL);
         setFocusable(false);
         setDescendantFocusability(FOCUS_BLOCK_DESCENDANTS);
-        setPadding(dp(9), dp(5), dp(9), dp(4));
+        setPadding(dp(12), dp(5), dp(12), dp(4));
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0x18FFFFFF);
-        bg.setCornerRadius(dp(9));
+        bg.setColor(0xA02B3342);
+        bg.setStroke(dp(1), 0x40FFFFFF);
+        bg.setCornerRadius(dp(15));
         setBackground(bg);
         LinearLayout info = column();
         addView(info, new LayoutParams(dp(82), LayoutParams.WRAP_CONTENT));

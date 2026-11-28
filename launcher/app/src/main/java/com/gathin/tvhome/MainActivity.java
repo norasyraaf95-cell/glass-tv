@@ -110,6 +110,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView heroName;
     private TextView heroDesc;
     private TextView heroWhere;
+    private TextView heroKicker, btnLearnMore;
     /** The place on screen and a few lines about it; null for the user's own wallpapers. */
     private String placeName;
     private String placeText = "", placeCountry = "";
@@ -278,6 +279,19 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         heroName = findViewById(R.id.heroName);
         heroDesc = findViewById(R.id.heroDesc);
         heroWhere = findViewById(R.id.heroWhere);
+        heroKicker = findViewById(R.id.heroKicker);
+        btnLearnMore = findViewById(R.id.btnLearnMore);
+        btnLearnMore.setOnClickListener(v -> showPlaceDetails());
+        btnLearnMore.setOnKeyListener((v, key, event) -> {
+            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+            if (key == KeyEvent.KEYCODE_DPAD_DOWN) { focusTile(lastFocused % COLUMNS); return true; }
+            if (key == KeyEvent.KEYCODE_DPAD_UP) {
+                View inputs = findViewById(R.id.btnInputs);
+                (inputs.getVisibility() == View.VISIBLE ? inputs : findViewById(R.id.btnSettings)).requestFocus();
+                return true;
+            }
+            return key == KeyEvent.KEYCODE_DPAD_LEFT || key == KeyEvent.KEYCODE_DPAD_RIGHT;
+        });
         // A share of the space between the side paddings, so the description wraps into a column
         // rather than running the width of the screen. The name is one line, allowed a wider share.
         int usable = getResources().getDisplayMetrics().widthPixels - (int) ((55 + 56) * density);
@@ -301,20 +315,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
-        // Beside the clock, the date sits on the digits' baseline, and AM/PM rests halfway between
-        // the top of the digits and the top of the date, its letters' foot on that line.
-        TextView clock = findViewById(R.id.clock), amPm = findViewById(R.id.ampm), dateLine = findViewById(R.id.date);
-        View dateBlock = findViewById(R.id.dateBlock);
-        dateBlock.setTranslationY(dateLine.getPaint().getFontMetrics().descent - clock.getPaint().getFontMetrics().descent);
-        // Placed once the whole column is laid out, AM/PM and the date both.
-        ((View) dateBlock.getParent()).addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-            android.graphics.Rect cap = new android.graphics.Rect();
-            dateLine.getPaint().getTextBounds("O", 0, 1, cap);
-            float capsAtTop = ClockDream.capInset(clock, "0") - ClockDream.capInset(amPm, "AM");
-            float foot = amPm.getTop() + capsAtTop + amPm.getBaseline();
-            float dateTop = dateBlock.getTop() + dateBlock.getTranslationY() + dateLine.getTop() + dateLine.getBaseline() + cap.top;
-            amPm.setTranslationY(Math.round(capsAtTop + (foot + dateTop) / 2f - foot));
-        });
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
@@ -885,7 +885,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         final String desc = placeName != null ? placeText : "";
         final String where = placeName != null ? placeCountry : "";
         int color = adapter.ambientColorAt(position);
-        heroBottom = dockTopInRoot - HERO_GAP_DP * density;
+        heroBottom = dockTopInRoot - (placeName != null ? 28f : HERO_GAP_DP) * density;
         float y = heroBottom - heroShelf.getHeight();
         boolean changed = !label.contentEquals(heroName.getText());
 
@@ -1003,6 +1003,20 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         heroDesc.setText(desc);
         heroDesc.setVisibility(desc.isEmpty() ? View.GONE : View.VISIBLE);
+        boolean place = placeName != null && title.equals(placeName);
+        heroKicker.setVisibility(place ? View.VISIBLE : View.GONE);
+        btnLearnMore.setVisibility(place && !desc.isEmpty() ? View.VISIBLE : View.GONE);
+        btnLearnMore.setFocusable(place && !desc.isEmpty());
+    }
+
+    /** Read the full locally cached Bing description without launching a browser. */
+    private void showPlaceDetails() {
+        if (placeName == null || placeText.isEmpty()) return;
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(placeName)
+                .setMessage((placeCountry.isEmpty() ? "" : placeCountry + "\n\n") + placeText)
+                .setPositiveButton("Close", (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     /**
@@ -1228,6 +1242,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void hideShelf() {
         if (!heroShown) return;
         heroShown = false;
+        btnLearnMore.setFocusable(false);
         heroShelf.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
     }
 
@@ -1415,7 +1430,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return position % COLUMNS == COLUMNS - 1 || position == count - 1;
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            if (position < COLUMNS) {
+                if (position == 0 && heroShown && btnLearnMore.isFocusable()
+                        && btnLearnMore.getVisibility() == View.VISIBLE && btnLearnMore.requestFocus()) return true;
+                return false;
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;

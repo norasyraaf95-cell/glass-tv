@@ -14,10 +14,11 @@
   "rows_below_dock": 0,
   "reduced_motion": true,
   "show_network_pill": false,
-  "show_live_tv": false,
-  "places": false,
-  "wallpaper": false,
+  "show_live_tv": true,
+  "places": true,
+  "wallpaper": true,
   "background_color": "#000000",
-  "module_cards": false,
-  "cache_clean_days": 7
+  "module_cards": true,
+  "cache_clean_days": 7,
+  "wallpaper_minutes": 30
 }

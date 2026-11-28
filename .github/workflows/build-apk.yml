@@ -56,7 +56,8 @@ jobs:
               config = json.loads(apk.read("assets/parents-config.json"))
           assert config["dock_apps"] == expected
           assert config["columns"] == 5 and config["rows_below_dock"] == 0
-          assert config["places"] is False and config["wallpaper"] is False
+          assert config["places"] is True and config["wallpaper"] is True
+          assert config["wallpaper_minutes"] == 30
           assert config["cache_clean_days"] == 7 and config["reduced_motion"] is True
           print("Five-app preset verified; weekly cache cleaning retained.")
           PY
