@@ -19,5 +19,5 @@
   "wallpaper": false,
   "background_color": "#000000",
   "module_cards": false,
-  "cache_clean_days": 0
+  "cache_clean_days": 7
 }
