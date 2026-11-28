@@ -57,7 +57,7 @@ jobs:
           assert config["dock_apps"] == expected
           assert config["columns"] == 5 and config["rows_below_dock"] == 0
           assert config["places"] is False and config["wallpaper"] is False
-          assert config["cache_clean_days"] == 0 and config["reduced_motion"] is True
+          assert config["cache_clean_days"] == 7 and config["reduced_motion"] is True
           print("Five-app preset verified.")
           PY
 
