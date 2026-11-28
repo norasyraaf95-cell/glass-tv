@@ -1,0 +1,23 @@
+{
+  "dock_apps": [
+    "org.smarttube.stable",
+    "net.flystream.tv",
+    "com.netflix.ninja",
+    "studio.scillarium.ottnavigator",
+    "com.google.android.youtube.tv"
+  ],
+  "hidden_apps": [
+    "com.mediatek.wwtv.tvcenter",
+    "com.mitv.gallery"
+  ],
+  "columns": 5,
+  "rows_below_dock": 0,
+  "reduced_motion": true,
+  "show_network_pill": false,
+  "show_live_tv": false,
+  "places": false,
+  "wallpaper": false,
+  "background_color": "#000000",
+  "module_cards": false,
+  "cache_clean_days": 0
+}
