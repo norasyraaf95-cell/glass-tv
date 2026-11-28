@@ -128,9 +128,24 @@ final class Config {
 
         File dir = dir(ctx);
         File file = dir != null ? new File(dir, FILE_NAME) : null;
-        JSONObject json = read(file);
+        // Parents Edition ships a preset, while a TV-side theme may still override individual keys.
+        JSONObject external = read(file);
+        applied = external != null;
+        JSONObject json = readBundled(ctx);
+        if (json == null) {
+            json = external;
+        } else if (external != null) {
+            java.util.Iterator<String> keys = external.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                try {
+                    json.put(key, external.get(key));
+                } catch (org.json.JSONException e) {
+                    Log.w(TAG, "ignoring theme key " + key, e);
+                }
+            }
+        }
         if (json != null) {
-            applied = true;
             dock = stringList(json, "dock_apps", dock);
             hidden = stringList(json, "hidden_apps", hidden);
             liveTv = string(json, "live_tv_package", liveTv);
@@ -175,6 +190,21 @@ final class Config {
                 Math.max(1, columns), Math.max(0, rowsBelow), shamsi, moduleCards, reducedMotion,
                 vpn, homeSettings, networkPill, liveTvRow, background, wallpaper, wallpapers, wallpaperIntervalMs,
                 places, cacheCleanDays, applied);
+    }
+
+    /** Preset bundled with the APK, used even on first launch without a pushed theme. */
+    private static JSONObject readBundled(Context ctx) {
+        try (InputStream in = ctx.getAssets().open("parents-config.json");
+             java.io.BufferedReader reader = new java.io.BufferedReader(
+                     new java.io.InputStreamReader(in, StandardCharsets.UTF_8))) {
+            StringBuilder text = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) text.append(line).append('\n');
+            return new JSONObject(text.toString());
+        } catch (Exception e) {
+            Log.w(TAG, "bundled preset unavailable; using original defaults", e);
+            return null;
+        }
     }
 
     /** Reads and parses the overlay; any problem means "no overlay", never a crash on the home screen. */
